@@ -3,7 +3,7 @@ package hotwiredbridge.hotline;
 public class UserListTransaction extends Transaction {
 
 	public UserListTransaction(int taskNumber) {
-		super(REPLY, ID_GETUSERLIST, taskNumber);
+		super(REPLY, ID_GETUSERLIST, taskNumber, false);
 	}
 
 	public void addUser(User user) {
