@@ -147,6 +147,8 @@ public abstract class MacRoman {
 	}
 
 	private static byte charToByte(char c) {
+		if (c - 0x80 < 0)
+			return (byte) c;
 		Byte b = REVERSE_MAP.get(c);
 		return (byte) (b == null ? '?' : b);
 	}
@@ -160,7 +162,7 @@ public abstract class MacRoman {
 	}
 
 	public static String toString(byte[] data) {
-		return toString(data, 0, data.length);
+		return (data == null ? null : toString(data, 0, data.length));
 	}
 
 	public static byte[] fromString(String string) {

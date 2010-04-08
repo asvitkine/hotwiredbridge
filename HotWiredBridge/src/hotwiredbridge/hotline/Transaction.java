@@ -48,13 +48,18 @@ public class Transaction {
 		this.isError = isError;
 		this.objects = new ArrayList<TransactionObject>();
 	}
-	
-	public Transaction(int type, int id, int taskNumber) {
-		this(type, id, taskNumber, false);
-	}
-	
+
 	public void addObject(TransactionObject object) {
 		objects.add(object);
+	}
+	
+	public byte[] getObjectData(int id) {
+		for (TransactionObject object : objects) {
+			if (object.id == id) {
+				return object.data;
+			}
+		}
+		return null;
 	}
 	
 	public String toString() {

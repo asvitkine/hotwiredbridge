@@ -1,4 +1,4 @@
-package hotwiredbridge;
+package hotwiredbridge.wired;
 
 import java.io.*;
 import java.util.*;
