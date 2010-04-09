@@ -149,15 +149,15 @@ public class HotWiredBridge implements WiredEventHandler {
 			int result = client.login(nick, login, password);
 			if (result == 0) {
 				client.requestUserList(1);
+				// FIXME:
 				t = factory.createReply(loginTransaction);
-				t.addObject(new TransactionObject(TransactionObject.SOCKET, new byte[] {(byte)0,(byte)1}));
+				t.addObject(TransactionObject.SOCKET, new byte[] {(byte)0,(byte)1});
 				queue.offer(t);
 				/*
 				t = factory.createRequest(Transaction.ID_USERLIST);
-				t.addObject(new TransactionObject(TransactionObject.PRIVS, new byte[8]));
-				t.addObject(new TransactionObject(TransactionObject.USER, new UserListTransaction.User(1, 0, 0, "Batman").toByteArray()));
+				t.addObject(TransactionObject.PRIVS, new byte[8]));
+				t.addObject(TransactionObject.USER, new UserListTransaction.User(1, 0, 0, "Batman").toByteArray()));
 				queue.offer(t);*/
-				client.requestUserList(1);
 			} else {
 				// error -> todo: msg?
 				t = factory.createReply(t, true);
@@ -166,7 +166,7 @@ public class HotWiredBridge implements WiredEventHandler {
 			break;
 		case Transaction.ID_GETNEWS:
 			t = factory.createReply(t);
-			t.addObject(new TransactionObject(TransactionObject.MESSAGE, new byte[0]));
+			t.addObject(TransactionObject.MESSAGE, new byte[0]);
 			queue.offer(t);
 			break;
 		case Transaction.ID_GETUSERLIST:
@@ -178,6 +178,12 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_SEND_CHAT:
 			client.sendChatMessage(1, MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE)));
 			break;
+		case Transaction.ID_SEND_PM: {
+			int userId = t.getObjectDataAsInt(TransactionObject.SOCKET);
+			String message = MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE));
+			client.sendPrivateMessage(userId, message);			
+			break;
+		}		
 		default:
 			System.out.println("NOT HANDLED!");
 			t = factory.createReply(t, true);
@@ -191,8 +197,8 @@ public class HotWiredBridge implements WiredEventHandler {
 			ChatEvent chatEvent = (ChatEvent) event;
 			Transaction t = factory.createRequest(Transaction.ID_CHAT);
 			String message = String.format("\r%13.13s: %s", userNames.get(chatEvent.getUserId()), chatEvent.getMessage());
-			t.addObject(new TransactionObject(TransactionObject.MESSAGE, MacRoman.fromString(message)));
-			t.addObject(new TransactionObject(TransactionObject.SOCKET, HotlineUtils.pack("n", chatEvent.getUserId())));
+			t.addObject(TransactionObject.MESSAGE, MacRoman.fromString(message));
+			t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", chatEvent.getUserId()));
 			queue.offer(t);
 			System.out.println("done");
 		} else if (event instanceof UserListEvent) {
@@ -205,10 +211,10 @@ public class HotWiredBridge implements WiredEventHandler {
 					if (t.getId() == Transaction.ID_GETUSERLIST) {
 						t = factory.createReply(t);
 						for (User user : userListEvent.getUsers()) {
-							UserListTransaction.User hotlineUser = new UserListTransaction.User(user.getId(), 0, 0, user.getNick());
-							t.addObject(new TransactionObject(TransactionObject.USER, hotlineUser.toByteArray()));						
+							HotlineUser hotlineUser = new HotlineUser(user.getId(), 0, 0, user.getNick());
+							t.addObject(TransactionObject.USER, hotlineUser.toByteArray());
 						}
-						t.addObject(new TransactionObject(TransactionObject.SUBJECT, new byte[0]));
+						t.addObject(TransactionObject.SUBJECT, new byte[0]);
 						queue.offer(t);
 						pendingTransactions.remove(t);
 						break;
@@ -219,7 +225,7 @@ public class HotWiredBridge implements WiredEventHandler {
 			UserLeaveEvent userLeaveEvent = (UserLeaveEvent) event;
 			// TODO: chatId
 			Transaction t = factory.createRequest(Transaction.ID_USERLEAVE);
-			t.addObject(new TransactionObject(TransactionObject.SOCKET, HotlineUtils.pack("n", userLeaveEvent.getUserId())));
+			t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", userLeaveEvent.getUserId()));
 			queue.offer(t);
 		} else if (event instanceof UserJoinEvent) {
 			UserJoinEvent userJoinEvent = (UserJoinEvent) event;
@@ -227,10 +233,17 @@ public class HotWiredBridge implements WiredEventHandler {
 			User user = userJoinEvent.getUser();
 			userNames.put(user.getId(), user.getNick());
 			Transaction t = factory.createRequest(Transaction.ID_USERCHANGE);
-			t.addObject(new TransactionObject(TransactionObject.SOCKET, HotlineUtils.pack("n", user.getId())));
-			t.addObject(new TransactionObject(TransactionObject.ICON, HotlineUtils.pack("n", 0)));
-			t.addObject(new TransactionObject(TransactionObject.STATUS, HotlineUtils.pack("n", 0))); // TODO
-			t.addObject(new TransactionObject(TransactionObject.NICK, MacRoman.fromString(user.getNick())));
+			t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", user.getId()));
+			t.addObject(TransactionObject.ICON, HotlineUtils.pack("n", 0));
+			t.addObject(TransactionObject.STATUS, HotlineUtils.pack("n", 0)); // TODO
+			t.addObject(TransactionObject.NICK, MacRoman.fromString(user.getNick()));
+			queue.offer(t);
+		} else if (event instanceof PrivateMessageEvent) {
+			PrivateMessageEvent privateMessageEvent = (PrivateMessageEvent) event;
+			Transaction t = factory.createRequest(Transaction.ID_PRIVATE_MESSAGE);
+			t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", privateMessageEvent.getFromUserId()));
+			t.addObject(TransactionObject.NICK, MacRoman.fromString(userNames.get(privateMessageEvent.getFromUserId())));
+			t.addObject(TransactionObject.MESSAGE, MacRoman.fromString(privateMessageEvent.getMessage()));
 			queue.offer(t);
 		} else {
 			System.out.println("not handled->"+event.getClass());

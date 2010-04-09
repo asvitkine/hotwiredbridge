@@ -1,8 +1,7 @@
 package hotwiredbridge.hotline;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.util.*;
 
 public class HotlineUtils {
 	
@@ -27,5 +26,26 @@ public class HotlineUtils {
 			throw new RuntimeException(e);
 		}
 		return stream.toByteArray();
+	}
+
+	public static Object[] unpack(String format, byte[] data) {
+		List<Object> objects = new ArrayList<Object>();
+		ByteArrayInputStream stream = new ByteArrayInputStream(data);
+		DataInputStream in = new DataInputStream(stream);
+		try {
+			for (int i = 0; i < format.length(); i++) {
+				char c = format.charAt(i);
+				if (c == 'n') {
+					objects.add(new Integer(in.readShort()));
+				} else if (c == 'N') {
+					objects.add(new Integer(in.readInt()));
+				} else {
+					throw new IllegalArgumentException();
+				}
+			}
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		return objects.toArray();
 	}
 }

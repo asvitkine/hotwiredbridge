@@ -1,5 +1,7 @@
 package hotwiredbridge.hotline;
 
+import hotwiredbridge.wired.WiredClient;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -49,23 +51,41 @@ public class Transaction {
 		this.objects = new ArrayList<TransactionObject>();
 	}
 
-	public void addObject(TransactionObject object) {
-		objects.add(object);
+	public void addObject(int id, byte[] data) {
+		objects.add(new TransactionObject(id, data));
 	}
 	
-	public byte[] getObjectData(int id) {
+	private TransactionObject findObject(int id) {
 		for (TransactionObject object : objects) {
 			if (object.id == id) {
-				return object.data;
+				return object;
 			}
 		}
 		return null;
 	}
 	
+	public byte[] getObjectData(int id) {
+		TransactionObject object = findObject(id);
+		return (object != null ? object.data : null);
+	}
+	
+	public Integer getObjectDataAsInt(int id) {
+		byte[] data = getObjectData(id);
+		if (data != null) {
+			if (data.length == 2) {
+				return ((Number)HotlineUtils.unpack("n", data)[0]).intValue();
+			} else if (data.length == 4) {
+				return ((Number)HotlineUtils.unpack("N", data)[0]).intValue();
+			}
+		}
+		return null;
+	}
+	
+	
 	public String toString() {
 		String s = String.format("%d %d %d with %d objecs:\n", type, id, taskNumber, objects.size());
 		for (TransactionObject o : objects) {
-			s += "  obj(" + o.id +")\n";
+			s += "  obj(" + o.id +") -> " + WiredClient.bytesToHex(o.data) + " \n";
 		}
 		return s;
 	}
