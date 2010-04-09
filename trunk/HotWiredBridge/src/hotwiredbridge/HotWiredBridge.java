@@ -4,6 +4,7 @@ import hotwiredbridge.hotline.*;
 import hotwiredbridge.wired.*;
 
 import java.security.*;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.io.*;
 import java.net.*;
@@ -20,10 +21,14 @@ public class HotWiredBridge implements WiredEventHandler {
 	private DataOutputStream out;
 	private LinkedBlockingQueue<Transaction> queue;
 	private TransactionFactory factory;
+	private Map<Integer,String> userNames;
+	private List<Transaction> pendingTransactions;
 
 	public void run() throws IOException {
 		queue = new LinkedBlockingQueue<Transaction>();
 		factory = new TransactionFactory();
+		userNames = new HashMap<Integer,String>();
+		pendingTransactions = new ArrayList<Transaction>();
 		ServerSocket serverSocket = new ServerSocket(4000);
 		System.out.println("X");
 		while (true) {
@@ -143,13 +148,15 @@ public class HotWiredBridge implements WiredEventHandler {
 			String password = MacRoman.toString(decode(t.getObjectData(TransactionObject.PASSWORD)));
 			int result = client.login(nick, login, password);
 			if (result == 0) {
+				client.requestUserList(1);
 				t = factory.createReply(loginTransaction);
 				t.addObject(new TransactionObject(TransactionObject.SOCKET, new byte[] {(byte)0,(byte)1}));
 				queue.offer(t);
+				/*
 				t = factory.createRequest(Transaction.ID_USERLIST);
 				t.addObject(new TransactionObject(TransactionObject.PRIVS, new byte[8]));
 				t.addObject(new TransactionObject(TransactionObject.USER, new UserListTransaction.User(1, 0, 0, "Batman").toByteArray()));
-				queue.offer(t);
+				queue.offer(t);*/
 				client.requestUserList(1);
 			} else {
 				// error -> todo: msg?
@@ -163,10 +170,10 @@ public class HotWiredBridge implements WiredEventHandler {
 			queue.offer(t);
 			break;
 		case Transaction.ID_GETUSERLIST:
-			t = factory.createReply(t);
-			t.addObject(new TransactionObject(TransactionObject.USER, new UserListTransaction.User(1, 0, 0, "Batman").toByteArray()));
-			t.addObject(new TransactionObject(TransactionObject.SUBJECT, new byte[0]));
-			queue.offer(t);
+			client.requestUserList(1);
+			synchronized (pendingTransactions) {
+				pendingTransactions.add(t);
+			}
 			break;
 		case Transaction.ID_SEND_CHAT:
 			client.sendChatMessage(1, MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE)));
@@ -183,13 +190,31 @@ public class HotWiredBridge implements WiredEventHandler {
 		if (event instanceof ChatEvent) {
 			ChatEvent chatEvent = (ChatEvent) event;
 			Transaction t = factory.createRequest(Transaction.ID_CHAT);
-			System.out.println("msg:"+chatEvent.getMessage());
-			t.addObject(new TransactionObject(TransactionObject.MESSAGE, MacRoman.fromString("\r"+chatEvent.getMessage())));
+			String message = String.format("\r%13.13s: %s", userNames.get(chatEvent.getUserId()), chatEvent.getMessage());
+			t.addObject(new TransactionObject(TransactionObject.MESSAGE, MacRoman.fromString(message)));
 			t.addObject(new TransactionObject(TransactionObject.SOCKET, HotlineUtils.pack("n", chatEvent.getUserId())));
 			queue.offer(t);
 			System.out.println("done");
 		} else if (event instanceof UserListEvent) {
 			UserListEvent userListEvent = (UserListEvent) event;
+			for (User user : userListEvent.getUsers()) {
+				userNames.put(user.getId(), user.getNick());
+			}
+			synchronized (pendingTransactions) {
+				for (Transaction t : pendingTransactions) {
+					if (t.getId() == Transaction.ID_GETUSERLIST) {
+						t = factory.createReply(t);
+						for (User user : userListEvent.getUsers()) {
+							UserListTransaction.User hotlineUser = new UserListTransaction.User(user.getId(), 0, 0, user.getNick());
+							t.addObject(new TransactionObject(TransactionObject.USER, hotlineUser.toByteArray()));						
+						}
+						t.addObject(new TransactionObject(TransactionObject.SUBJECT, new byte[0]));
+						queue.offer(t);
+						pendingTransactions.remove(t);
+						break;
+					}
+				}
+			}
 		} else {
 			System.out.println("not handled->"+event.getClass());
 		}
