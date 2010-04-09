@@ -189,7 +189,10 @@ public class HotWiredBridge implements WiredEventHandler {
 			String message = MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE));
 			client.sendPrivateMessage(userId, message);			
 			break;
-		}		
+		}
+		case Transaction.ID_CHANGE_NICK:
+			client.sendNick(MacRoman.toString(t.getObjectData(TransactionObject.NICK)));
+			break;
 		default:
 			System.out.println("NOT HANDLED!");
 			t = factory.createReply(t, true);
@@ -273,6 +276,19 @@ public class HotWiredBridge implements WiredEventHandler {
 						break;
 					}
 				}
+			}
+		} else if (event instanceof UserStatusChangeEvent) {
+			UserStatusChangeEvent userStatusChangeEvent = (UserStatusChangeEvent) event;
+			User user = userStatusChangeEvent.getUser();
+			String oldNick = userNames.get(user.getId());
+			if (!user.getNick().equals(oldNick)) {
+				userNames.put(user.getId(), user.getNick());
+				Transaction t = factory.createRequest(Transaction.ID_USERCHANGE);
+				t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", user.getId()));
+				t.addObject(TransactionObject.ICON, HotlineUtils.pack("n", 0));
+				t.addObject(TransactionObject.STATUS, HotlineUtils.pack("n", 0)); // TODO
+				t.addObject(TransactionObject.NICK, MacRoman.fromString(user.getNick()));
+				queue.offer(t);
 			}
 		} else {
 			System.out.println("not handled->"+event.getClass());

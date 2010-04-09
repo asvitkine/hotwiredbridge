@@ -90,6 +90,12 @@ public class EventBasedWiredClient extends WiredClient {
 			event.setLoginTime(params.get(11));
 			event.setIdleTime(params.get(10));
 			handler.handleEvent(event);
+		} else if (code == WiredClient.MSG_STATUS_CHANGE) {
+			UserStatusChangeEvent event = new UserStatusChangeEvent();
+			User user = new User();
+			readBaseUserFields(user, 0, params);
+			event.setUser(user);
+			handler.handleEvent(event);
 		}
 	}
 
