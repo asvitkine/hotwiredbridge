@@ -215,6 +215,23 @@ public class HotWiredBridge implements WiredEventHandler {
 					}
 				}
 			}
+		} else if (event instanceof UserLeaveEvent) {
+			UserLeaveEvent userLeaveEvent = (UserLeaveEvent) event;
+			// TODO: chatId
+			Transaction t = factory.createRequest(Transaction.ID_USERLEAVE);
+			t.addObject(new TransactionObject(TransactionObject.SOCKET, HotlineUtils.pack("n", userLeaveEvent.getUserId())));
+			queue.offer(t);
+		} else if (event instanceof UserJoinEvent) {
+			UserJoinEvent userJoinEvent = (UserJoinEvent) event;
+			// TODO: chatId
+			User user = userJoinEvent.getUser();
+			userNames.put(user.getId(), user.getNick());
+			Transaction t = factory.createRequest(Transaction.ID_USERCHANGE);
+			t.addObject(new TransactionObject(TransactionObject.SOCKET, HotlineUtils.pack("n", user.getId())));
+			t.addObject(new TransactionObject(TransactionObject.ICON, HotlineUtils.pack("n", 0)));
+			t.addObject(new TransactionObject(TransactionObject.STATUS, HotlineUtils.pack("n", 0))); // TODO
+			t.addObject(new TransactionObject(TransactionObject.NICK, MacRoman.fromString(user.getNick())));
+			queue.offer(t);
 		} else {
 			System.out.println("not handled->"+event.getClass());
 		}
