@@ -175,6 +175,12 @@ public class HotWiredBridge implements WiredEventHandler {
 				pendingTransactions.add(t);
 			}
 			break;
+		case Transaction.ID_GETUSERINFO:
+			client.requestUserInfo(t.getObjectDataAsInt(TransactionObject.SOCKET));
+			synchronized (pendingTransactions) {
+				pendingTransactions.add(t);
+			}
+			break;
 		case Transaction.ID_SEND_CHAT:
 			client.sendChatMessage(1, MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE)));
 			break;
@@ -245,6 +251,29 @@ public class HotWiredBridge implements WiredEventHandler {
 			t.addObject(TransactionObject.NICK, MacRoman.fromString(userNames.get(privateMessageEvent.getFromUserId())));
 			t.addObject(TransactionObject.MESSAGE, MacRoman.fromString(privateMessageEvent.getMessage()));
 			queue.offer(t);
+		} else if (event instanceof UserInfoEvent) {
+			UserInfoEvent userInfoEvent = (UserInfoEvent) event;
+			synchronized (pendingTransactions) {
+				for (Transaction t : pendingTransactions) {
+					if (t.getId() == Transaction.ID_GETUSERINFO &&
+						t.getObjectDataAsInt(TransactionObject.SOCKET) == userInfoEvent.getUser().getId())
+					{
+						User user = userInfoEvent.getUser();
+						StringBuilder sb = new StringBuilder();
+						sb.append(String.format("    name: %s\r", user.getNick()));
+						sb.append(String.format("   login: %s\r", user.getLogin()));
+						sb.append(String.format("    host: %s\r", userInfoEvent.getHost()));
+						sb.append(String.format(" address: %s\r", userInfoEvent.getIp()));
+						sb.append(String.format(" version: %s\r", userInfoEvent.getClientVersion()));
+						sb.append(String.format("login tm: %s\r", userInfoEvent.getLoginTime()));
+						t = factory.createReply(t);
+						t.addObject(TransactionObject.MESSAGE, MacRoman.fromString(sb.toString()));
+						queue.offer(t);
+						pendingTransactions.remove(t);
+						break;
+					}
+				}
+			}
 		} else {
 			System.out.println("not handled->"+event.getClass());
 		}

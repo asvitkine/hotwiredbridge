@@ -360,12 +360,16 @@ public abstract class WiredClient {
 				if (b == EOT) {
 					if (bytes.size() > 0) {
 						msg.params.add(bytes.toString("UTF-8"));
+					} else {
+						msg.params.add("");
 					}
 					break;
 				} else if (b == FS) {
 					if (bytes.size() > 0) {
 						msg.params.add(bytes.toString("UTF-8"));
 						bytes = new ByteArrayOutputStream();
+					} else {
+						msg.params.add("");
 					}
 				} else {
 					bytes.write(b);
