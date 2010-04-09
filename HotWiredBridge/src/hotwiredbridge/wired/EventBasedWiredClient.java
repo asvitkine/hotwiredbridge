@@ -75,6 +75,21 @@ public class EventBasedWiredClient extends WiredClient {
 			event.setFromUserId(Integer.valueOf(params.get(0)));
 			event.setMessage(params.get(1));
 			handler.handleEvent(event);
+		} else if (code == WiredClient.MSG_CLIENT_INFO) {
+			UserInfoEvent event = new UserInfoEvent();
+			User user = new User();
+			readBaseUserFields(user, 0, params);
+			if (params.size() > 16)
+				user.setImage(params.get(16));
+			event.setUser(user);
+			event.setIp(params.get(6));
+			event.setHost(params.get(7));
+			event.setClientVersion(params.get(8));
+			event.setCipherName(params.get(9));
+			event.setCipherBits(params.get(10));
+			event.setLoginTime(params.get(11));
+			event.setIdleTime(params.get(10));
+			handler.handleEvent(event);
 		}
 	}
 
@@ -90,20 +105,24 @@ public class EventBasedWiredClient extends WiredClient {
 		return file;
 	}
 
-
 	private static long parseDate(String dateString) {
 		System.out.println(dateString);
 		System.out.println(ISO8601.parse(dateString).toString());
 		return ISO8601.parse(dateString).getTimeInMillis();
 	}
 	
+	private static void readBaseUserFields(User user, int index, List<String> params) {
+		user.setId(Integer.valueOf(params.get(index++)));
+		user.setIdle(Boolean.valueOf(params.get(index++)));
+		user.setAdmin(Boolean.valueOf(params.get(index++)));
+		index++;
+		user.setNick(params.get(index++));
+		user.setLogin(params.get(index++));
+	}
+	
 	private static User readUser(List<String> params) {
 		User user = new User();
-		user.setId(Integer.valueOf(params.get(1)));
-		user.setIdle(Boolean.valueOf(params.get(2)));
-		user.setAdmin(Boolean.valueOf(params.get(3)));
-		user.setNick(params.get(5));
-		user.setLogin(params.get(6));
+		readBaseUserFields(user, 1, params);
 		if (params.size() > 9)
 			user.setImage(params.get(9));
 		return user;
