@@ -62,6 +62,7 @@ public class EventBasedWiredClient extends WiredClient {
 			files.add(readFile(params));
 		} else if (code == WiredClient.MSG_FILE_LISTING_DONE) {
 			FileListEvent event = new FileListEvent();
+			event.setPath(params.get(0));
 			event.setFiles(files);
 			files = new ArrayList<FileInfo>();
 			handler.handleEvent(event);
