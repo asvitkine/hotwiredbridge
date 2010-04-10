@@ -97,6 +97,24 @@ public class EventBasedWiredClient extends WiredClient {
 			readBaseUserFields(user, 0, params);
 			event.setUser(user);
 			handler.handleEvent(event);
+		} else if (code == WiredClient.MSG_PRIVATE_CHAT_CREATED) {
+			ChatCreatedEvent event = new ChatCreatedEvent();
+			event.setChatId(Integer.valueOf(params.get(0)));
+			handler.handleEvent(event);
+		} else if (code == WiredClient.MSG_PRIVATE_CHAT_DECLINED) {
+			DeclineChatEvent event = new DeclineChatEvent();
+			event.setChatId(Integer.valueOf(params.get(0)));
+			event.setUserId(Integer.valueOf(params.get(1)));
+			handler.handleEvent(event);
+		} else if (code == WiredClient.MSG_CHAT_TOPIC) {
+			TopicChangedEvent event = new TopicChangedEvent();
+			event.setChatId(Integer.valueOf(params.get(0)));
+			event.setNick(params.get(1));
+			event.setLogin(params.get(2));
+			event.setIp(params.get(3));
+			event.setTime(parseDate(params.get(4)));
+			event.setTopic(params.get(5));
+			handler.handleEvent(event);
 		}
 	}
 
