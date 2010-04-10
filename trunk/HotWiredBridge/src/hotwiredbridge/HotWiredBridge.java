@@ -181,9 +181,17 @@ public class HotWiredBridge implements WiredEventHandler {
 				pendingTransactions.add(t);
 			}
 			break;
-		case Transaction.ID_SEND_CHAT:
-			client.sendChatMessage(1, MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE)));
+		case Transaction.ID_SEND_CHAT: {
+			Integer chatWindow = t.getObjectDataAsInt(TransactionObject.CHATWINDOW);
+			Integer param = t.getObjectDataAsInt(TransactionObject.PARAMETER);
+			int chatId = (chatWindow == null || chatWindow == 0 ? 1 : chatWindow);
+			if (param != null && param != 0) {
+				client.sendEmoteMessage(chatId, MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE)));
+			} else {
+				client.sendChatMessage(chatId, MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE)));
+			}
 			break;
+		}
 		case Transaction.ID_SEND_PM: {
 			int userId = t.getObjectDataAsInt(TransactionObject.SOCKET);
 			String message = MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE));
@@ -231,12 +239,22 @@ public class HotWiredBridge implements WiredEventHandler {
 		System.out.println("handleEvent!!");
 		if (event instanceof ChatEvent) {
 			ChatEvent chatEvent = (ChatEvent) event;
-			Transaction t = factory.createRequest(Transaction.ID_CHAT);
-			String message = String.format("\r%13.13s: %s", userNames.get(chatEvent.getUserId()), chatEvent.getMessage());
+			Transaction t = factory.createRequest(Transaction.ID_RELAY_CHAT);
+			String message;
+			if (chatEvent.isEmote()) {
+				message = String.format("\r *** %s %s", userNames.get(chatEvent.getUserId()), chatEvent.getMessage());
+			} else {
+				message = String.format("\r%13.13s: %s", userNames.get(chatEvent.getUserId()), chatEvent.getMessage());
+			}
 			t.addObject(TransactionObject.MESSAGE, MacRoman.fromString(message));
 			t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", chatEvent.getUserId()));
+			if (chatEvent.getChatId() != 1) {
+				t.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("n", chatEvent.getChatId()));
+			}
+			if (chatEvent.isEmote()) {
+				t.addObject(TransactionObject.PARAMETER, HotlineUtils.pack("n", 1));	
+			}
 			queue.offer(t);
-			System.out.println("done");
 		} else if (event instanceof UserListEvent) {
 			UserListEvent userListEvent = (UserListEvent) event;
 			for (User user : userListEvent.getUsers()) {
@@ -328,9 +346,6 @@ public class HotWiredBridge implements WiredEventHandler {
 							for (FileInfo file : fileListEvent.getFiles()) {
 								int fileSize = (int) (file.isDirectory() ? 0 : file.getSize());
 								int containedItems = (int) (!file.isDirectory() ? 0 : file.getSize());
-								System.out.println("A:"+file.getName());
-								System.out.println("B:"+path);
-								System.out.println("C:"+file.getName().substring(path.length()));
 								byte[] fileNameBytes = MacRoman.fromString(file.getName());
 								byte[] data = HotlineUtils.pack("BBNNNB",
 									file.isDirectory() ? "fldr".getBytes() : "????".getBytes(),
