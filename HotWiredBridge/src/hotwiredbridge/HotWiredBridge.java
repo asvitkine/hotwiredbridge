@@ -224,6 +224,10 @@ public class HotWiredBridge implements WiredEventHandler {
 			break;
 		case Transaction.ID_JOIN_PCHAT:
 			client.joinChat(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
+			client.requestUserList(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
+			synchronized (pendingTransactions) {
+				pendingTransactions.add(t);
+			}
 			break;
 		case Transaction.ID_LEAVING_PCHAT:
 			client.leaveChat(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
@@ -304,13 +308,19 @@ public class HotWiredBridge implements WiredEventHandler {
 			}
 			synchronized (pendingTransactions) {
 				for (Transaction t : pendingTransactions) {
-					if (t.getId() == Transaction.ID_GETUSERLIST) {
+					if ((t.getId() == Transaction.ID_GETUSERLIST) ||
+						(t.getId() == Transaction.ID_JOIN_PCHAT &&
+						 t.getObjectDataAsInt(TransactionObject.CHATWINDOW) == userListEvent.getChatId()))
+					{
 						Transaction reply = factory.createReply(t);
 						for (User user : userListEvent.getUsers()) {
 							HotlineUser hotlineUser = new HotlineUser(user.getId(), 0, 0, user.getNick());
 							reply.addObject(TransactionObject.USER, hotlineUser.toByteArray());
 						}
-						reply.addObject(TransactionObject.SUBJECT, new byte[0]);
+						byte[] subject = t.getObjectData(TransactionObject.SUBJECT);
+						if (subject != null) {
+							reply.addObject(TransactionObject.SUBJECT, subject);
+						}
 						queue.offer(reply);
 						pendingTransactions.remove(t);
 						break;
@@ -438,8 +448,17 @@ public class HotWiredBridge implements WiredEventHandler {
 			}
 		} else if (event instanceof TopicChangedEvent) {
 			TopicChangedEvent topicChangedEvent = (TopicChangedEvent) event;
+			int chatId = topicChangedEvent.getChatId();
+			synchronized (pendingTransactions) {
+				for (Transaction t : pendingTransactions) {
+					if (t.getId() == Transaction.ID_JOIN_PCHAT && t.getObjectDataAsInt(TransactionObject.CHATWINDOW) == chatId) {
+						t.addObject(TransactionObject.SUBJECT, MacRoman.fromString(topicChangedEvent.getTopic()));
+						break;
+					}
+				}
+			}
 			Transaction t = factory.createRequest(Transaction.ID_CHANGED_SUBJECT);
-			t.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("N", topicChangedEvent.getChatId()));
+			t.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("N", chatId));
 			t.addObject(TransactionObject.SUBJECT, MacRoman.fromString(topicChangedEvent.getTopic()));
 			queue.offer(t);
 		} else {
