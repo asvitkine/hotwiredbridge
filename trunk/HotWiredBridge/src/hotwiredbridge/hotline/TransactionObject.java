@@ -15,6 +15,9 @@ public class TransactionObject {
 	public static final int CHATWINDOW = 114;
 	public static final int SUBJECT = 115;
 	public static final int VERSION = 160;
+	public static final int FILE_ENTRY = 200;
+	public static final int FILENAME = 201;
+	public static final int PATH = 202;
 	public static final int SERVER_NAME = 162;
 	public static final int USER = 300;
 

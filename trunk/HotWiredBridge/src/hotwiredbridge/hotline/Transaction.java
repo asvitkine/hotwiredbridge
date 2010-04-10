@@ -28,8 +28,10 @@ public class Transaction {
 	public static final int ID_LEFT_PCHAT = 118;
 	public static final int ID_CHANGED_SUBJECT = 119;
 	public static final int ID_REQUEST_CHANGE_SUBJECT = 120;
-
 	public static final int ID_AGREE = 121;
+
+	public static final int ID_GETFOLDERLIST = 200;
+
 	public static final int ID_GETUSERLIST = 300;
 	public static final int ID_USERCHANGE = 301;
 	public static final int ID_USERLEAVE = 302;

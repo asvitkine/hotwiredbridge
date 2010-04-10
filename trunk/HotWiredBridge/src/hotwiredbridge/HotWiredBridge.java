@@ -193,11 +193,38 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_CHANGE_NICK:
 			client.sendNick(MacRoman.toString(t.getObjectData(TransactionObject.NICK)));
 			break;
+		case Transaction.ID_GETFOLDERLIST:
+			String path = convertPath(t.getObjectData(TransactionObject.PATH));
+			client.requestFileList(path);
+			synchronized (pendingTransactions) {
+				pendingTransactions.add(t);
+			}
+			break;
 		default:
 			System.out.println("NOT HANDLED!");
 			t = factory.createReply(t, true);
 			queue.offer(t);
 		}
+	}
+
+	private static String convertPath(byte[] data) {
+		ByteArrayInputStream stream = new ByteArrayInputStream(data);
+		DataInputStream in = new DataInputStream(stream);
+		StringBuilder sb = new StringBuilder();
+		try {
+			int levels = in.readShort();
+			for (int i = 0; i < levels; i++) {
+				in.readShort();
+				int nameLength = in.readUnsignedByte();
+				byte[] buf = new byte[nameLength];
+				in.readFully(buf);
+				sb.append("/");
+				sb.append(MacRoman.toString(buf));
+			}
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		return sb.toString();
 	}
 
 	public void handleEvent(WiredEvent event) {
@@ -218,13 +245,13 @@ public class HotWiredBridge implements WiredEventHandler {
 			synchronized (pendingTransactions) {
 				for (Transaction t : pendingTransactions) {
 					if (t.getId() == Transaction.ID_GETUSERLIST) {
-						t = factory.createReply(t);
+						Transaction reply = factory.createReply(t);
 						for (User user : userListEvent.getUsers()) {
 							HotlineUser hotlineUser = new HotlineUser(user.getId(), 0, 0, user.getNick());
-							t.addObject(TransactionObject.USER, hotlineUser.toByteArray());
+							reply.addObject(TransactionObject.USER, hotlineUser.toByteArray());
 						}
-						t.addObject(TransactionObject.SUBJECT, new byte[0]);
-						queue.offer(t);
+						reply.addObject(TransactionObject.SUBJECT, new byte[0]);
+						queue.offer(reply);
 						pendingTransactions.remove(t);
 						break;
 					}
@@ -269,9 +296,9 @@ public class HotWiredBridge implements WiredEventHandler {
 						sb.append(String.format(" address: %s\r", userInfoEvent.getIp()));
 						sb.append(String.format(" version: %s\r", userInfoEvent.getClientVersion()));
 						sb.append(String.format("login tm: %s\r", userInfoEvent.getLoginTime()));
-						t = factory.createReply(t);
-						t.addObject(TransactionObject.MESSAGE, MacRoman.fromString(sb.toString()));
-						queue.offer(t);
+						Transaction reply = factory.createReply(t);
+						reply.addObject(TransactionObject.MESSAGE, MacRoman.fromString(sb.toString()));
+						queue.offer(reply);
 						pendingTransactions.remove(t);
 						break;
 					}
@@ -289,6 +316,35 @@ public class HotWiredBridge implements WiredEventHandler {
 				t.addObject(TransactionObject.STATUS, HotlineUtils.pack("n", 0)); // TODO
 				t.addObject(TransactionObject.NICK, MacRoman.fromString(user.getNick()));
 				queue.offer(t);
+			}
+		} else if (event instanceof FileListEvent) {
+			FileListEvent fileListEvent = (FileListEvent) event;
+			synchronized (pendingTransactions) {
+				for (Transaction t : pendingTransactions) {
+					if (t.getId() == Transaction.ID_GETFOLDERLIST) {
+						String path = convertPath(t.getObjectData(TransactionObject.PATH));
+						if (path.equals(fileListEvent.getPath())) {
+							Transaction reply = factory.createReply(t);
+							for (FileInfo file : fileListEvent.getFiles()) {
+								int fileSize = (int) (file.isDirectory() ? 0 : file.getSize());
+								int containedItems = (int) (!file.isDirectory() ? 0 : file.getSize());
+								System.out.println("A:"+file.getName());
+								System.out.println("B:"+path);
+								System.out.println("C:"+file.getName().substring(path.length()));
+								byte[] fileNameBytes = MacRoman.fromString(file.getName());
+								byte[] data = HotlineUtils.pack("BBNNNB",
+									file.isDirectory() ? "fldr".getBytes() : "????".getBytes(),
+									file.isDirectory() ? new byte[4] : "????".getBytes(),
+									fileSize, containedItems,
+									fileNameBytes.length, fileNameBytes);
+								reply.addObject(TransactionObject.FILE_ENTRY, data);	
+							}
+							queue.offer(reply);
+							pendingTransactions.remove(t);
+							break;
+						}
+					}
+				}
 			}
 		} else {
 			System.out.println("not handled->"+event.getClass());
