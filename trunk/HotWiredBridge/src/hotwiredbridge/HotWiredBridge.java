@@ -7,68 +7,49 @@ import java.security.*;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.io.*;
-import java.net.*;
 
 import javax.net.ssl.*;
 
 public class HotWiredBridge implements WiredEventHandler {
-	public static void main(String[] args) throws IOException {
-		new HotWiredBridge().run();
-	}
-
-	private WiredClient client;
+	private WiredServerConfig config;
 	private DataInputStream in;
 	private DataOutputStream out;
+
+	private WiredClient client;
 	private LinkedBlockingQueue<Transaction> queue;
 	private TransactionFactory factory;
 	private Map<Integer,String> userNames;
 	private List<Transaction> pendingTransactions;
 	private Map<Integer,Transaction> pendingCreateChatTransactions;
 
-	public void run() throws IOException {
+	public HotWiredBridge(WiredServerConfig config, InputStream in, OutputStream out) {
+		this.config = config;
+		this.in = new DataInputStream(in);
+		this.out = new DataOutputStream(out);
+
+	}
+	
+	public void run() throws Exception {
+		if (!performHandshake()) {
+			return;
+		}
+
+		client = createClientFor(config.getHost(), config.getPort());
 		queue = new LinkedBlockingQueue<Transaction>();
 		factory = new TransactionFactory();
 		userNames = new HashMap<Integer,String>();
 		pendingTransactions = new LinkedList<Transaction>();
 		pendingCreateChatTransactions = new HashMap<Integer,Transaction>();
-		ServerSocket serverSocket = new ServerSocket(4000);
-		System.out.println("X");
-		while (true) {
-			Socket socket = serverSocket.accept();
-			in = new DataInputStream(socket.getInputStream());
-			out = new DataOutputStream(socket.getOutputStream());
-
-			if (!performHandshake()) {
-				socket.close();
-				continue;
+		
+		new Thread() {
+			public void run() {
+				processOutgoingHotlineTransactions();
 			}
-	
-			try {
-				client = createClientFor("localhost", 2000, this);
-				// we need to keep a list of pending transactions and answer them as we can.
-				// typical process:
-				// 		hl sends us a request ('get userlist')
-				//		we forward it to wired -> client.requestUserList(1);
-				//      we get userlist from wired
-				//      we send it to hl (we need to remember the transaction number)
-				// and:
-				//     wired sends us a msg -> processServerMessage(msg)
-				//     convert it, and send it to hl
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		}.start();
 
-			new Thread() {
-				public void run() {
-					processOutgoingHotlineTransactions();
-				}
-			}.start();
-
-			processIncomingHotlineTransactions();
-		}
+		processIncomingHotlineTransactions();
 	}
-	
+
 	private void processIncomingHotlineTransactions() throws IOException {
 		while (true) {
 			Transaction t = Transaction.readFromStream(in);
@@ -93,15 +74,19 @@ public class HotWiredBridge implements WiredEventHandler {
 		}
 	}
 
-	private boolean performHandshake() throws IOException {
+	private boolean performHandshake() {
 		byte[] handshake = new byte[8];
-		in.readFully(handshake);
-		if (!new String(handshake).equals("TRTPHOTL")) {
+		try {
+			in.readFully(handshake);
+			if (!new String(handshake).equals("TRTPHOTL")) {
+				return false;
+			}
+			in.readInt(); // version
+			out.write(HotlineUtils.pack("BN", "TRTP".getBytes(), 0));
+			out.flush();
+		} catch (IOException e) {
 			return false;
 		}
-		System.out.println(in.readInt()); // version number - who cares!
-		out.write(HotlineUtils.pack("BN", "TRTP".getBytes(), 0));
-		out.flush();
 		return true;
 	}
 
@@ -115,7 +100,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		return decoded;
 	}
 	
-	public static WiredClient createClientFor(String host, int port, HotWiredBridge hs) throws Exception {
+	public WiredClient createClientFor(String host, int port) throws Exception {
 		File certificatesFile = new File("/Users/shadowknight/Projects/ventcore/ssl_certs");
 		InputStream in = new FileInputStream(certificatesFile);
 		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
@@ -130,7 +115,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		SSLSocketFactory factory = context.getSocketFactory();
 		SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
 		socket.setEnabledProtocols(new String[] {"TLSv1"});
-		return new EventBasedWiredClient(socket.getInputStream(), socket.getOutputStream(), hs);
+		return new EventBasedWiredClient(socket.getInputStream(), socket.getOutputStream(), this);
 	}
 
 	public void handleTransaction(Transaction t) throws IOException {
