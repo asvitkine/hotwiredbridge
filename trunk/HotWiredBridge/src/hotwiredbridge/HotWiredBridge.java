@@ -23,12 +23,14 @@ public class HotWiredBridge implements WiredEventHandler {
 	private TransactionFactory factory;
 	private Map<Integer,String> userNames;
 	private List<Transaction> pendingTransactions;
+	private Map<Integer,Transaction> pendingCreateChatTransactions;
 
 	public void run() throws IOException {
 		queue = new LinkedBlockingQueue<Transaction>();
 		factory = new TransactionFactory();
 		userNames = new HashMap<Integer,String>();
-		pendingTransactions = new ArrayList<Transaction>();
+		pendingTransactions = new LinkedList<Transaction>();
+		pendingCreateChatTransactions = new HashMap<Integer,Transaction>();
 		ServerSocket serverSocket = new ServerSocket(4000);
 		System.out.println("X");
 		while (true) {
@@ -208,6 +210,29 @@ public class HotWiredBridge implements WiredEventHandler {
 				pendingTransactions.add(t);
 			}
 			break;
+		case Transaction.ID_CREATE_PCHAT:
+			client.createPrivateChat();
+			synchronized (pendingTransactions) {
+				pendingTransactions.add(t);
+			}
+			break;
+		case Transaction.ID_INVITE_TO_PCHAT:
+			client.inviteToChat(t.getObjectDataAsInt(TransactionObject.SOCKET), t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
+			break;
+		case Transaction.ID_REJECT_PCHAT:
+			client.declineInvitation(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
+			break;
+		case Transaction.ID_JOIN_PCHAT:
+			client.joinChat(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
+			break;
+		case Transaction.ID_LEAVING_PCHAT:
+			client.leaveChat(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
+			break;
+		case Transaction.ID_REQUEST_CHANGE_SUBJECT: {
+			String subject = MacRoman.toString(t.getObjectData(TransactionObject.SUBJECT));
+			client.changeTopic(t.getObjectDataAsInt(TransactionObject.CHATWINDOW), subject);
+			break;
+		}
 		default:
 			System.out.println("NOT HANDLED!");
 			t = factory.createReply(t, true);
@@ -236,7 +261,6 @@ public class HotWiredBridge implements WiredEventHandler {
 	}
 
 	public void handleEvent(WiredEvent event) {
-		System.out.println("handleEvent!!");
 		if (event instanceof ChatEvent) {
 			ChatEvent chatEvent = (ChatEvent) event;
 			Transaction t = factory.createRequest(Transaction.ID_RELAY_CHAT);
@@ -249,7 +273,7 @@ public class HotWiredBridge implements WiredEventHandler {
 			t.addObject(TransactionObject.MESSAGE, MacRoman.fromString(message));
 			t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", chatEvent.getUserId()));
 			if (chatEvent.getChatId() != 1) {
-				t.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("n", chatEvent.getChatId()));
+				t.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("N", chatEvent.getChatId()));
 			}
 			if (chatEvent.isEmote()) {
 				t.addObject(TransactionObject.PARAMETER, HotlineUtils.pack("n", 1));	
@@ -259,6 +283,24 @@ public class HotWiredBridge implements WiredEventHandler {
 			UserListEvent userListEvent = (UserListEvent) event;
 			for (User user : userListEvent.getUsers()) {
 				userNames.put(user.getId(), user.getNick());
+			}
+			Transaction createChatTransaction = pendingCreateChatTransactions.get(userListEvent.getChatId());
+			if (createChatTransaction != null) {
+				try {
+					client.inviteToChat(createChatTransaction.getObjectDataAsInt(TransactionObject.SOCKET), userListEvent.getChatId());
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+				Transaction reply = factory.createReply(createChatTransaction);
+				reply.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("N", userListEvent.getChatId()));
+				User user = userListEvent.getUsers().get(0);
+				reply.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", user.getId()));
+				reply.addObject(TransactionObject.ICON, HotlineUtils.pack("n", 0));
+				reply.addObject(TransactionObject.STATUS, HotlineUtils.pack("n", 0));
+				reply.addObject(TransactionObject.NICK, MacRoman.fromString(user.getNick()));
+				queue.offer(reply);
+				pendingCreateChatTransactions.remove(userListEvent.getChatId());
+				return;
 			}
 			synchronized (pendingTransactions) {
 				for (Transaction t : pendingTransactions) {
@@ -277,16 +319,26 @@ public class HotWiredBridge implements WiredEventHandler {
 			}
 		} else if (event instanceof UserLeaveEvent) {
 			UserLeaveEvent userLeaveEvent = (UserLeaveEvent) event;
-			// TODO: chatId
-			Transaction t = factory.createRequest(Transaction.ID_USERLEAVE);
+			Transaction t;
+			if (userLeaveEvent.getChatId() == 1) {
+				t = factory.createRequest(Transaction.ID_USERLEAVE);
+			} else {
+				t = factory.createRequest(Transaction.ID_LEFT_PCHAT);
+				t.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("N", userLeaveEvent.getChatId()));
+			}
 			t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", userLeaveEvent.getUserId()));
 			queue.offer(t);
 		} else if (event instanceof UserJoinEvent) {
 			UserJoinEvent userJoinEvent = (UserJoinEvent) event;
-			// TODO: chatId
 			User user = userJoinEvent.getUser();
-			userNames.put(user.getId(), user.getNick());
-			Transaction t = factory.createRequest(Transaction.ID_USERCHANGE);
+			Transaction t;
+			if (userJoinEvent.getChatId() == 1) {
+				userNames.put(user.getId(), user.getNick());
+				t = factory.createRequest(Transaction.ID_USERCHANGE);
+			} else {
+				t = factory.createRequest(Transaction.ID_JOINED_PCHAT);
+				t.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("N", userJoinEvent.getChatId()));
+			}
 			t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", user.getId()));
 			t.addObject(TransactionObject.ICON, HotlineUtils.pack("n", 0));
 			t.addObject(TransactionObject.STATUS, HotlineUtils.pack("n", 0)); // TODO
@@ -361,6 +413,35 @@ public class HotWiredBridge implements WiredEventHandler {
 					}
 				}
 			}
+		} else if (event instanceof InviteEvent) {
+			InviteEvent inviteEvent = (InviteEvent) event;
+			Transaction t = factory.createRequest(Transaction.ID_INVITE_TO_PCHAT);
+			t.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("N", inviteEvent.getChatId()));
+			t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", inviteEvent.getUserId()));
+			t.addObject(TransactionObject.NICK, MacRoman.fromString(userNames.get(inviteEvent.getUserId())));
+			queue.offer(t);
+		} else if (event instanceof ChatCreatedEvent) {
+			ChatCreatedEvent privateChatCreatedEvent = (ChatCreatedEvent) event;
+			synchronized (pendingTransactions) {
+				for (Transaction t : pendingTransactions) {
+					if (t.getId() == Transaction.ID_CREATE_PCHAT) {
+						try {
+							client.requestUserList(privateChatCreatedEvent.getChatId());
+						} catch (IOException e) {
+							throw new RuntimeException(e);
+						}
+						pendingCreateChatTransactions.put(privateChatCreatedEvent.getChatId(), t);
+						pendingTransactions.remove(t);
+						break;
+					}
+				}
+			}
+		} else if (event instanceof TopicChangedEvent) {
+			TopicChangedEvent topicChangedEvent = (TopicChangedEvent) event;
+			Transaction t = factory.createRequest(Transaction.ID_CHANGED_SUBJECT);
+			t.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("N", topicChangedEvent.getChatId()));
+			t.addObject(TransactionObject.SUBJECT, MacRoman.fromString(topicChangedEvent.getTopic()));
+			queue.offer(t);
 		} else {
 			System.out.println("not handled->"+event.getClass());
 		}
