@@ -153,14 +153,25 @@ public class HotWiredBridge implements WiredEventHandler {
 
 	public void handleTransaction(Transaction t) throws IOException {
 		switch (t.getId()) {
-		case Transaction.ID_LOGIN:
+		case Transaction.ID_LOGIN: {
 			Transaction loginTransaction = t;
 			String nick = MacRoman.toString(t.getObjectData(TransactionObject.NICK));
 			String login = MacRoman.toString(decode(t.getObjectData(TransactionObject.LOGIN)));
 			String password = MacRoman.toString(decode(t.getObjectData(TransactionObject.PASSWORD)));
 			int result = client.login(nick, login, password);
 			if (result == 0) {
+				Integer icon = t.getObjectDataAsInt(TransactionObject.ICON);
+				if (icon != null) {
+					client.sendIcon(icon, null);
+				}
 				client.requestUserList(1);
+				/* FIXME */
+				/*
+#<Transaction:0x1f13c8 @objects=[
+	#<TransactionObject:0x1f0fe0 @id=110, @data="`p\f\260\003\200\000\000">,
+	#<TransactionObject:0x1f0f40 @id=300, @data="\0001\000\000\000\000\000\006testin">],
+@id=354, @is_error=false, @task_number=1, @type=0>
+				 */
 				t = factory.createReply(loginTransaction);
 				t.addObject(TransactionObject.SOCKET, new byte[] {(byte)0,(byte)1});
 				queue.offer(t);
@@ -170,6 +181,7 @@ public class HotWiredBridge implements WiredEventHandler {
 				queue.offer(t);
 			}
 			break;
+		}
 		case Transaction.ID_GETNEWS:
 			t = factory.createReply(t);
 			t.addObject(TransactionObject.MESSAGE, new byte[0]);
@@ -204,9 +216,17 @@ public class HotWiredBridge implements WiredEventHandler {
 			client.sendPrivateMessage(userId, message);			
 			break;
 		}
-		case Transaction.ID_CHANGE_NICK:
-			client.sendNick(MacRoman.toString(t.getObjectData(TransactionObject.NICK)));
+		case Transaction.ID_CHANGE_NICK: {
+			String nick = MacRoman.toString(t.getObjectData(TransactionObject.NICK));
+			if (nick != null) {
+				client.sendNick(nick);
+			}
+			Integer icon = t.getObjectDataAsInt(TransactionObject.ICON);
+			if (icon != null) {
+				client.sendIcon(icon, null);
+			}
 			break;
+		}
 		case Transaction.ID_GETFOLDERLIST: {
 			String path = convertPath(t.getObjectData(TransactionObject.PATH));
 			client.requestFileList(path);
@@ -296,14 +316,14 @@ public class HotWiredBridge implements WiredEventHandler {
 	
 	private void addUserObjects(Transaction t, User user) {
 		t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", user.getId()));
-		t.addObject(TransactionObject.ICON, HotlineUtils.pack("n", 0));
+		t.addObject(TransactionObject.ICON, HotlineUtils.pack("n", user.getIcon()));
 		t.addObject(TransactionObject.STATUS, HotlineUtils.pack("n", getUserStatus(user)));
 		t.addObject(TransactionObject.NICK, MacRoman.fromString(user.getNick()));
 	}
 	
 	public byte[] packUser(User user) {
 		byte[] nick = MacRoman.fromString(user.getNick());
-		return HotlineUtils.pack("nnnnB", user.getId(), 0, getUserStatus(user), nick.length, nick);
+		return HotlineUtils.pack("nnnnB", user.getId(), user.getIcon(), getUserStatus(user), nick.length, nick);
 	}
 
 	public void handleEvent(WiredEvent event) {
@@ -422,13 +442,10 @@ public class HotWiredBridge implements WiredEventHandler {
 		} else if (event instanceof UserStatusChangeEvent) {
 			UserStatusChangeEvent userStatusChangeEvent = (UserStatusChangeEvent) event;
 			User user = userStatusChangeEvent.getUser();
-			String oldNick = userNames.get(user.getId());
-			if (!user.getNick().equals(oldNick)) {
-				userNames.put(user.getId(), user.getNick());
-				Transaction t = factory.createRequest(Transaction.ID_USERCHANGE);
-				addUserObjects(t, user);
-				queue.offer(t);
-			}
+			userNames.put(user.getId(), user.getNick());
+			Transaction t = factory.createRequest(Transaction.ID_USERCHANGE);
+			addUserObjects(t, user);
+			queue.offer(t);
 		} else if (event instanceof FileListEvent) {
 			FileListEvent fileListEvent = (FileListEvent) event;
 			synchronized (pendingTransactions) {

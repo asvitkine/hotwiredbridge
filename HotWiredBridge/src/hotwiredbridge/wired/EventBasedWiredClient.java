@@ -152,7 +152,7 @@ public class EventBasedWiredClient extends WiredClient {
 		user.setId(Integer.valueOf(params.get(index++)));
 		user.setIdle(Integer.valueOf(params.get(index++)) == 1);
 		user.setAdmin(Integer.valueOf(params.get(index++)) == 1);
-		index++; // icon
+		user.setIcon(Integer.valueOf(params.get(index++)));
 		user.setNick(params.get(index++));
 		user.setLogin(params.get(index++));
 	}
