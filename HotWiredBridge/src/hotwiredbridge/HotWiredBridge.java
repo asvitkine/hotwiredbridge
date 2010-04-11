@@ -282,6 +282,29 @@ public class HotWiredBridge implements WiredEventHandler {
 		}
 		return sb.toString();
 	}
+	
+	private static int getUserStatus(User user) {
+		int status = 0;
+		if (user.isIdle()) {
+			status |= 1;
+		}
+		if (user.isAdmin()) {
+			status |= 2;
+		}
+		return status;
+	}
+	
+	private void addUserObjects(Transaction t, User user) {
+		t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", user.getId()));
+		t.addObject(TransactionObject.ICON, HotlineUtils.pack("n", 0));
+		t.addObject(TransactionObject.STATUS, HotlineUtils.pack("n", getUserStatus(user)));
+		t.addObject(TransactionObject.NICK, MacRoman.fromString(user.getNick()));
+	}
+	
+	public byte[] packUser(User user) {
+		byte[] nick = MacRoman.fromString(user.getNick());
+		return HotlineUtils.pack("nnnnB", user.getId(), 0, getUserStatus(user), nick.length, nick);
+	}
 
 	public void handleEvent(WiredEvent event) {
 		if (event instanceof ChatEvent) {
@@ -317,10 +340,7 @@ public class HotWiredBridge implements WiredEventHandler {
 				Transaction reply = factory.createReply(createChatTransaction);
 				reply.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("N", userListEvent.getChatId()));
 				User user = userListEvent.getUsers().get(0);
-				reply.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", user.getId()));
-				reply.addObject(TransactionObject.ICON, HotlineUtils.pack("n", 0));
-				reply.addObject(TransactionObject.STATUS, HotlineUtils.pack("n", 0));
-				reply.addObject(TransactionObject.NICK, MacRoman.fromString(user.getNick()));
+				addUserObjects(reply, user);
 				queue.offer(reply);
 				pendingCreateChatTransactions.remove(userListEvent.getChatId());
 				return;
@@ -333,8 +353,7 @@ public class HotWiredBridge implements WiredEventHandler {
 					{
 						Transaction reply = factory.createReply(t);
 						for (User user : userListEvent.getUsers()) {
-							HotlineUser hotlineUser = new HotlineUser(user.getId(), 0, 0, user.getNick());
-							reply.addObject(TransactionObject.USER, hotlineUser.toByteArray());
+							reply.addObject(TransactionObject.USER, packUser(user));
 						}
 						byte[] subject = t.getObjectData(TransactionObject.SUBJECT);
 						if (subject != null) {
@@ -368,10 +387,7 @@ public class HotWiredBridge implements WiredEventHandler {
 				t = factory.createRequest(Transaction.ID_JOINED_PCHAT);
 				t.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("N", userJoinEvent.getChatId()));
 			}
-			t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", user.getId()));
-			t.addObject(TransactionObject.ICON, HotlineUtils.pack("n", 0));
-			t.addObject(TransactionObject.STATUS, HotlineUtils.pack("n", 0)); // TODO
-			t.addObject(TransactionObject.NICK, MacRoman.fromString(user.getNick()));
+			addUserObjects(t, user);
 			queue.offer(t);
 		} else if (event instanceof PrivateMessageEvent) {
 			PrivateMessageEvent privateMessageEvent = (PrivateMessageEvent) event;
@@ -410,10 +426,7 @@ public class HotWiredBridge implements WiredEventHandler {
 			if (!user.getNick().equals(oldNick)) {
 				userNames.put(user.getId(), user.getNick());
 				Transaction t = factory.createRequest(Transaction.ID_USERCHANGE);
-				t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", user.getId()));
-				t.addObject(TransactionObject.ICON, HotlineUtils.pack("n", 0));
-				t.addObject(TransactionObject.STATUS, HotlineUtils.pack("n", 0)); // TODO
-				t.addObject(TransactionObject.NICK, MacRoman.fromString(user.getNick()));
+				addUserObjects(t, user);
 				queue.offer(t);
 			}
 		} else if (event instanceof FileListEvent) {
