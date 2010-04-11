@@ -16,11 +16,13 @@ public class HotWiredBridge implements WiredEventHandler {
 	private DataOutputStream out;
 
 	private WiredClient client;
+	private SSLSocket wiredSocket;
 	private LinkedBlockingQueue<Transaction> queue;
 	private TransactionFactory factory;
 	private Map<Integer,String> userNames;
 	private List<Transaction> pendingTransactions;
 	private Map<Integer,Transaction> pendingCreateChatTransactions;
+	private boolean closed;
 
 	public HotWiredBridge(WiredServerConfig config, InputStream in, OutputStream out) {
 		this.config = config;
@@ -28,12 +30,19 @@ public class HotWiredBridge implements WiredEventHandler {
 		this.out = new DataOutputStream(out);
 	}
 	
-	public void run() throws Exception {
+	public void run() {
 		if (!performHandshake()) {
+			close();
 			return;
 		}
 
-		client = createClientFor(config.getHost(), config.getPort());
+		try {
+			client = createClientFor(config.getHost(), config.getPort());			
+		} catch (Exception e) {
+			close();
+			return;
+		}
+
 		queue = new LinkedBlockingQueue<Transaction>();
 		factory = new TransactionFactory();
 		userNames = new HashMap<Integer,String>();
@@ -49,17 +58,23 @@ public class HotWiredBridge implements WiredEventHandler {
 		processIncomingHotlineTransactions();
 	}
 
-	private void processIncomingHotlineTransactions() throws IOException {
-		while (true) {
-			Transaction t = Transaction.readFromStream(in);
-			System.out.println("Got transaction: " + t.toString());
-			handleTransaction(t);
+	private void processIncomingHotlineTransactions() {
+		try {
+			while (!closed) {
+				Transaction t = Transaction.readFromStream(in);
+				System.out.println("Got transaction: " + t.toString());
+				handleTransaction(t);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			close();
 		}
 	}
 	
 	private void processOutgoingHotlineTransactions() {
 		try {
-			while (true) {
+			while (!closed) {
 				Transaction t = queue.take();
 				System.out.println("Sending transaction: " + t.toString());
 				Transaction.writeToStream(t, out);
@@ -68,8 +83,27 @@ public class HotWiredBridge implements WiredEventHandler {
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			close();
+		}
+	}
+	
+	private synchronized void close() {
+		if (!closed) {
+			if (wiredSocket != null) {
+				try { wiredSocket.close(); } catch (Exception e) {}
+				wiredSocket = null;
+			}
+			if (in != null) {
+				try { in.close(); } catch (Exception e) {}
+				in = null;
+			}
+			if (out != null) {
+				try { out.close(); } catch (Exception e) {}
+				out = null;
+			}
+			closed = true;
 		}
 	}
 
@@ -112,9 +146,9 @@ public class HotWiredBridge implements WiredEventHandler {
 		tmf.init(ks);
 		context.init(null, new TrustManager[] {tmf.getTrustManagers()[0]}, null);
 		SSLSocketFactory factory = context.getSocketFactory();
-		SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-		socket.setEnabledProtocols(new String[] {"TLSv1"});
-		return new EventBasedWiredClient(socket.getInputStream(), socket.getOutputStream(), this);
+		wiredSocket = (SSLSocket) factory.createSocket(host, port);
+		wiredSocket.setEnabledProtocols(new String[] {"TLSv1"});
+		return new EventBasedWiredClient(wiredSocket.getInputStream(), wiredSocket.getOutputStream(), this);
 	}
 
 	public void handleTransaction(Transaction t) throws IOException {
