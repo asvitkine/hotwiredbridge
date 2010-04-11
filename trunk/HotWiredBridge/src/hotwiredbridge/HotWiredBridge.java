@@ -187,13 +187,23 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_CHANGE_NICK:
 			client.sendNick(MacRoman.toString(t.getObjectData(TransactionObject.NICK)));
 			break;
-		case Transaction.ID_GETFOLDERLIST:
+		case Transaction.ID_GETFOLDERLIST: {
 			String path = convertPath(t.getObjectData(TransactionObject.PATH));
 			client.requestFileList(path);
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
 			break;
+		}
+		case Transaction.ID_GETFILEINFO: {
+			String path = convertPath(t.getObjectData(TransactionObject.PATH));
+			path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
+			client.requestFileInfo(path);
+			synchronized (pendingTransactions) {
+				pendingTransactions.add(t);
+			}
+			break;
+		}
 		case Transaction.ID_CREATE_PCHAT:
 			client.createPrivateChat();
 			synchronized (pendingTransactions) {
@@ -462,6 +472,33 @@ public class HotWiredBridge implements WiredEventHandler {
 				Transaction t = factory.createRequest(Transaction.ID_PRIVATE_MESSAGE);
 				t.addObject(TransactionObject.MESSAGE, MacRoman.fromString(wiredErrorEvent.getMessage()));
 				queue.offer(t);
+			}
+		} else if (event instanceof FileInfoEvent) {
+			FileInfoEvent fileInfoEvent = (FileInfoEvent) event;
+			synchronized (pendingTransactions) {
+				for (Transaction t : pendingTransactions) {
+					if (t.getId() == Transaction.ID_GETFILEINFO) {
+						String path = convertPath(t.getObjectData(TransactionObject.PATH));
+						path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
+						FileInfo fileInfo = fileInfoEvent.getFileInfo();
+						if (path.equals(fileInfo.getPath())) {
+							Transaction reply = factory.createReply(t);
+							reply.addObject(TransactionObject.FILETYPE, fileInfo.isDirectory() ? "fldr".getBytes() : "????".getBytes());
+							reply.addObject(TransactionObject.FILETYPESTR, "????".getBytes());
+							reply.addObject(TransactionObject.FILECREATORSTR, "????".getBytes());
+							reply.addObject(TransactionObject.FILENAME, MacRoman.fromString(fileInfo.getName()));
+							reply.addObject(TransactionObject.FILECREATED, HotlineUtils.pack("D", fileInfo.getCreationDate()));
+							reply.addObject(TransactionObject.FILEMODIFIED, HotlineUtils.pack("D", fileInfo.getModificationDate()));
+							reply.addObject(TransactionObject.FILESIZE, HotlineUtils.pack("N", fileInfo.getSize()));
+							if (fileInfoEvent.getComment() != null) {
+								reply.addObject(TransactionObject.COMMENT, MacRoman.fromString(fileInfoEvent.getComment()));
+							}
+							queue.offer(reply);
+							pendingTransactions.remove(t);
+							break;
+						}
+					}
+				}
 			}
 		} else {
 			System.out.println("not handled->"+event.getClass());

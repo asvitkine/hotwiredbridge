@@ -17,6 +17,11 @@ public class HotlineUtils {
 					out.writeInt(((Number)args[i]).intValue());
 				} else if (c == 'B') {
 					out.write((byte[])args[i]);
+				} else if (c == 'D') {
+					out.writeShort(1970);
+					out.writeShort(0);
+					long millis = ((Number)args[i]).longValue();
+					out.writeInt((int)(millis / 1000));
 				} else {
 					throw new IllegalArgumentException();
 				}

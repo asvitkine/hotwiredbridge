@@ -23,14 +23,14 @@ public class EventBasedWiredClient extends WiredClient {
 			for (String p : params)
 				System.out.println("  " + p);
 		}
-		if (code == WiredClient.MSG_CHAT || code == WiredClient.MSG_ACTION_CHAT) {
+		if (code == MSG_CHAT || code == MSG_ACTION_CHAT) {
 			ChatEvent event = new ChatEvent();
 			event.setChatId(Integer.valueOf(params.get(0)));
 			event.setUserId(Integer.valueOf(params.get(1)));
 			event.setMessage(params.get(2));
 			event.setEmote(code == WiredClient.MSG_ACTION_CHAT);
 			handler.handleEvent(event);
-		} else if (code == WiredClient.MSG_USERLIST) {
+		} else if (code == MSG_USERLIST) {
 			int chatId = Integer.valueOf(params.get(0));
 			List<User> userlist = users.get(chatId);
 			if (userlist == null) {
@@ -38,7 +38,7 @@ public class EventBasedWiredClient extends WiredClient {
 				users.put(chatId, userlist);
 			}
 			userlist.add(readUser(params));
-		} else if (code == WiredClient.MSG_USERLIST_DONE) {
+		} else if (code == MSG_USERLIST_DONE) {
 			int chatId = Integer.valueOf(params.get(0));
 			List<User> userlist = users.get(chatId);
 			if (userlist != null) {
@@ -48,35 +48,35 @@ public class EventBasedWiredClient extends WiredClient {
 				handler.handleEvent(event);
 				users.remove(chatId);
 			}
-		} else if (code == WiredClient.MSG_CLIENT_JOIN) {
+		} else if (code == MSG_CLIENT_JOIN) {
 			UserJoinEvent event = new UserJoinEvent();
 			event.setChatId(Integer.valueOf(params.get(0)));
 			event.setUser(readUser(params));
 			handler.handleEvent(event);
-		} else if (code == WiredClient.MSG_CLIENT_LEAVE) {
+		} else if (code == MSG_CLIENT_LEAVE) {
 			UserLeaveEvent event = new UserLeaveEvent();
 			event.setChatId(Integer.valueOf(params.get(0)));
 			event.setUserId(Integer.valueOf(params.get(1)));
 			handler.handleEvent(event);
-		} else if (code == WiredClient.MSG_FILE_LISTING) {
+		} else if (code == MSG_FILE_LISTING) {
 			files.add(readFile(params));
-		} else if (code == WiredClient.MSG_FILE_LISTING_DONE) {
+		} else if (code == MSG_FILE_LISTING_DONE) {
 			FileListEvent event = new FileListEvent();
 			event.setPath(params.get(0));
 			event.setFiles(files);
 			files = new ArrayList<FileInfo>();
 			handler.handleEvent(event);
-		} else if (code == WiredClient.MSG_PRIVATE_CHAT_INVITE) {
+		} else if (code == MSG_PRIVATE_CHAT_INVITE) {
 			InviteEvent event = new InviteEvent();
 			event.setChatId(Integer.valueOf(params.get(0)));
 			event.setUserId(Integer.valueOf(params.get(1)));
 			handler.handleEvent(event);
-		} else if (code == WiredClient.MSG_PRIVATE_MESSAGE) {
+		} else if (code == MSG_PRIVATE_MESSAGE) {
 			PrivateMessageEvent event = new PrivateMessageEvent();
 			event.setFromUserId(Integer.valueOf(params.get(0)));
 			event.setMessage(params.get(1));
 			handler.handleEvent(event);
-		} else if (code == WiredClient.MSG_CLIENT_INFO) {
+		} else if (code == MSG_CLIENT_INFO) {
 			UserInfoEvent event = new UserInfoEvent();
 			User user = new User();
 			readBaseUserFields(user, 0, params);
@@ -91,22 +91,22 @@ public class EventBasedWiredClient extends WiredClient {
 			event.setLoginTime(params.get(11));
 			event.setIdleTime(params.get(10));
 			handler.handleEvent(event);
-		} else if (code == WiredClient.MSG_STATUS_CHANGE) {
+		} else if (code == MSG_STATUS_CHANGE) {
 			UserStatusChangeEvent event = new UserStatusChangeEvent();
 			User user = new User();
 			readBaseUserFields(user, 0, params);
 			event.setUser(user);
 			handler.handleEvent(event);
-		} else if (code == WiredClient.MSG_PRIVATE_CHAT_CREATED) {
+		} else if (code == MSG_PRIVATE_CHAT_CREATED) {
 			ChatCreatedEvent event = new ChatCreatedEvent();
 			event.setChatId(Integer.valueOf(params.get(0)));
 			handler.handleEvent(event);
-		} else if (code == WiredClient.MSG_PRIVATE_CHAT_DECLINED) {
+		} else if (code == MSG_PRIVATE_CHAT_DECLINED) {
 			DeclineChatEvent event = new DeclineChatEvent();
 			event.setChatId(Integer.valueOf(params.get(0)));
 			event.setUserId(Integer.valueOf(params.get(1)));
 			handler.handleEvent(event);
-		} else if (code == WiredClient.MSG_CHAT_TOPIC) {
+		} else if (code == MSG_CHAT_TOPIC) {
 			TopicChangedEvent event = new TopicChangedEvent();
 			event.setChatId(Integer.valueOf(params.get(0)));
 			event.setNick(params.get(1));
@@ -114,6 +114,13 @@ public class EventBasedWiredClient extends WiredClient {
 			event.setIp(params.get(3));
 			event.setTime(parseDate(params.get(4)));
 			event.setTopic(params.get(5));
+			handler.handleEvent(event);
+		} else if (code == MSG_FILE_INFO) {
+			FileInfoEvent event = new FileInfoEvent();
+			event.setFileInfo(readFile(params));
+			event.setChecksum(params.get(5));
+			if (params.size() > 6)
+				event.setComment(params.get(6));
 			handler.handleEvent(event);
 		} else if (code >= 500 && code < 600) {
 			WiredErrorEvent event = new WiredErrorEvent();
