@@ -444,6 +444,25 @@ public class HotWiredBridge implements WiredEventHandler {
 			t.addObject(TransactionObject.CHATWINDOW, HotlineUtils.pack("N", chatId));
 			t.addObject(TransactionObject.SUBJECT, MacRoman.fromString(topicChangedEvent.getTopic()));
 			queue.offer(t);
+		} else if (event instanceof WiredErrorEvent) {
+			WiredErrorEvent wiredErrorEvent = (WiredErrorEvent) event;
+			if (wiredErrorEvent.getErrorCode() == WiredClient.MSG_FILE_OR_DIRECTORY_NOT_FOUND) {
+				synchronized (pendingTransactions) {
+					for (Transaction t : pendingTransactions) {
+						if (t.getId() == Transaction.ID_GETFOLDERLIST) {
+							Transaction reply = factory.createReply(t, true);
+							reply.addObject(TransactionObject.ERROR_MSG, MacRoman.fromString(wiredErrorEvent.getMessage()));
+							queue.offer(reply);
+							pendingTransactions.remove(t);
+							break;
+						}
+					}
+				}
+			} else {
+				Transaction t = factory.createRequest(Transaction.ID_PRIVATE_MESSAGE);
+				t.addObject(TransactionObject.MESSAGE, MacRoman.fromString(wiredErrorEvent.getMessage()));
+				queue.offer(t);
+			}
 		} else {
 			System.out.println("not handled->"+event.getClass());
 		}

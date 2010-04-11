@@ -115,6 +115,11 @@ public class EventBasedWiredClient extends WiredClient {
 			event.setTime(parseDate(params.get(4)));
 			event.setTopic(params.get(5));
 			handler.handleEvent(event);
+		} else if (code >= 500 && code < 600) {
+			WiredErrorEvent event = new WiredErrorEvent();
+			event.setMessage(params.get(0));
+			event.setErrorCode(code);
+			handler.handleEvent(event);
 		}
 	}
 
