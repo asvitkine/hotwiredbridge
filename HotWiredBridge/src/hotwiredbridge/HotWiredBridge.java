@@ -26,7 +26,6 @@ public class HotWiredBridge implements WiredEventHandler {
 		this.config = config;
 		this.in = new DataInputStream(in);
 		this.out = new DataOutputStream(out);
-
 	}
 	
 	public void run() throws Exception {
