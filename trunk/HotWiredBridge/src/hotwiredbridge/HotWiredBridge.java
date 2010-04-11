@@ -154,14 +154,6 @@ public class HotWiredBridge implements WiredEventHandler {
 	public void handleTransaction(Transaction t) throws IOException {
 		switch (t.getId()) {
 		case Transaction.ID_LOGIN:
-			/*
-			 *   obj(105) obj(106) obj(102) obj(104) obj(160)
-			 *  public static final int NICK = 102;
-			 *  public static final int ICON = 104;
-			 *  public static final int LOGIN = 105;
-			 *  public static final int PASSWORD = 106;
-			 *  public static final int VERSION = 160;
-			 */
 			Transaction loginTransaction = t;
 			String nick = MacRoman.toString(t.getObjectData(TransactionObject.NICK));
 			String login = MacRoman.toString(decode(t.getObjectData(TransactionObject.LOGIN)));
@@ -169,15 +161,9 @@ public class HotWiredBridge implements WiredEventHandler {
 			int result = client.login(nick, login, password);
 			if (result == 0) {
 				client.requestUserList(1);
-				// FIXME:
 				t = factory.createReply(loginTransaction);
 				t.addObject(TransactionObject.SOCKET, new byte[] {(byte)0,(byte)1});
 				queue.offer(t);
-				/*
-				t = factory.createRequest(Transaction.ID_USERLIST);
-				t.addObject(TransactionObject.PRIVS, new byte[8]));
-				t.addObject(TransactionObject.USER, new UserListTransaction.User(1, 0, 0, "Batman").toByteArray()));
-				queue.offer(t);*/
 			} else {
 				// error -> todo: msg?
 				t = factory.createReply(t, true);
