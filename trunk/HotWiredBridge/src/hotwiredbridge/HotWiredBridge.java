@@ -390,13 +390,12 @@ public class HotWiredBridge implements WiredEventHandler {
 						if (path.equals(fileListEvent.getPath())) {
 							Transaction reply = factory.createReply(t);
 							for (FileInfo file : fileListEvent.getFiles()) {
-								int fileSize = (int) (file.isDirectory() ? 0 : file.getSize());
 								int containedItems = (int) (!file.isDirectory() ? 0 : file.getSize());
 								byte[] fileNameBytes = MacRoman.fromString(file.getName());
 								byte[] data = HotlineUtils.pack("BBNNNB",
 									file.isDirectory() ? "fldr".getBytes() : "????".getBytes(),
 									file.isDirectory() ? new byte[4] : "????".getBytes(),
-									fileSize, containedItems,
+									file.getSize(), containedItems,
 									fileNameBytes.length, fileNameBytes);
 								reply.addObject(TransactionObject.FILE_ENTRY, data);	
 							}
