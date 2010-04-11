@@ -231,6 +231,9 @@ public class HotWiredBridge implements WiredEventHandler {
 			client.changeTopic(t.getObjectDataAsInt(TransactionObject.CHATWINDOW), subject);
 			break;
 		}
+		case Transaction.ID_BROADCAST:
+			client.broadcastMessage(MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE)));
+			break;
 		default:
 			System.out.println("NOT HANDLED!");
 			t = factory.createReply(t, true);
@@ -239,6 +242,8 @@ public class HotWiredBridge implements WiredEventHandler {
 	}
 
 	private static String convertPath(byte[] data) {
+		if (data == null)
+			return "";
 		ByteArrayInputStream stream = new ByteArrayInputStream(data);
 		DataInputStream in = new DataInputStream(stream);
 		StringBuilder sb = new StringBuilder();
