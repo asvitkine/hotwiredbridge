@@ -127,8 +127,9 @@ public class Transaction {
 		out.writeInt(transaction.taskNumber);
 		out.writeInt(transaction.isError ? 1 : 0);
 		if (transaction.objects.size() == 0) {
-			out.writeInt(0);
-			out.writeInt(0);
+			out.writeInt(2);
+			out.writeInt(2);
+			out.writeShort(0);
 		} else {
 			int length = 0;
 			for (TransactionObject object : transaction.objects) {
