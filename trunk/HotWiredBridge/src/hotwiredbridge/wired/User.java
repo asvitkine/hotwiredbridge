@@ -6,6 +6,7 @@ public class User {
 	private String login;
 	private boolean idle;
 	private boolean admin;
+	private int icon;
 	private int status;
 	private String image;
 
@@ -50,5 +51,11 @@ public class User {
 	}
 	public void setNick(String nick) {
 		this.nick = nick;
+	}
+	public void setIcon(int icon) {
+		this.icon = icon;
+	}
+	public int getIcon() {
+		return icon;
 	}
 }
