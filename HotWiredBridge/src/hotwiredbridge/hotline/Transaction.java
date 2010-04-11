@@ -31,6 +31,7 @@ public class Transaction {
 	public static final int ID_AGREE = 121;
 
 	public static final int ID_GETFOLDERLIST = 200;
+	public static final int ID_GETFILEINFO = 206;
 
 	public static final int ID_GETUSERLIST = 300;
 	public static final int ID_USERCHANGE = 301;
