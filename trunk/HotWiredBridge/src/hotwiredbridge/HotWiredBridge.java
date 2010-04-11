@@ -12,6 +12,7 @@ import javax.net.ssl.*;
 
 public class HotWiredBridge implements WiredEventHandler {
 	private WiredServerConfig config;
+	private IconDatabase iconDB;
 	private DataInputStream in;
 	private DataOutputStream out;
 
@@ -24,8 +25,9 @@ public class HotWiredBridge implements WiredEventHandler {
 	private Map<Integer,Transaction> pendingCreateChatTransactions;
 	private boolean closed;
 
-	public HotWiredBridge(WiredServerConfig config, InputStream in, OutputStream out) {
+	public HotWiredBridge(WiredServerConfig config, IconDatabase iconDB, InputStream in, OutputStream out) {
 		this.config = config;
+		this.iconDB = iconDB;
 		this.in = new DataInputStream(in);
 		this.out = new DataOutputStream(out);
 	}
@@ -162,7 +164,7 @@ public class HotWiredBridge implements WiredEventHandler {
 			if (result == 0) {
 				Integer icon = t.getObjectDataAsInt(TransactionObject.ICON);
 				if (icon != null) {
-					client.sendIcon(icon, null);
+					client.sendIcon(icon, iconDB.getBase64FromIconIndex(icon));
 				}
 				client.requestUserList(1);
 				/* FIXME */
@@ -223,7 +225,7 @@ public class HotWiredBridge implements WiredEventHandler {
 			}
 			Integer icon = t.getObjectDataAsInt(TransactionObject.ICON);
 			if (icon != null) {
-				client.sendIcon(icon, null);
+				client.sendIcon(icon, iconDB.getBase64FromIconIndex(icon));
 			}
 			break;
 		}
