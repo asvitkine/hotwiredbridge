@@ -39,6 +39,7 @@ public class Transaction {
 	public static final int ID_GETUSERINFO = 303;
 	public static final int ID_CHANGE_NICK = 304;
 	public static final int ID_USERLIST = 354;
+	public static final int ID_BROADCAST = 355;
 
 	private int type;
 	private int id;
