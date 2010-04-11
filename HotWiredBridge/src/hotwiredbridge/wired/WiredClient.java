@@ -186,13 +186,21 @@ public abstract class WiredClient {
 	public synchronized void sendHello() throws IOException {
 		send("HELLO").send(EOT);
 	}
-	
-	public synchronized void sendIcon(int iconId, byte[] image) throws IOException {
+
+	public synchronized void sendIcon(int iconId, String base64Image) throws IOException {
 		send("ICON").send(SP).send(""+iconId);
-		if (image != null) {
-			send(FS).send(bytesToBase64(image));
+		if (base64Image != null) {
+			send(FS).send(base64Image);
 		}
 		send(EOT);
+	}
+	
+	public void sendIcon(int iconId, byte[] image) throws IOException {
+		String base64Image = null;
+		if (image != null) {
+			base64Image = bytesToBase64(image);
+		}
+		sendIcon(iconId, base64Image);
 	}
 
 	public synchronized void requestUserInfo(int userId) throws IOException {
