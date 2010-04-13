@@ -149,10 +149,10 @@ public class EventBasedWiredClient extends WiredClient {
 	}
 	
 	private static void readBaseUserFields(User user, int index, List<String> params) {
-		user.setId(Integer.valueOf(params.get(index++)));
-		user.setIdle(Integer.valueOf(params.get(index++)) == 1);
-		user.setAdmin(Integer.valueOf(params.get(index++)) == 1);
-		user.setIcon(Integer.valueOf(params.get(index++)));
+		user.setId(Long.valueOf(params.get(index++)));
+		user.setIdle(Long.valueOf(params.get(index++)) == 1);
+		user.setAdmin(Long.valueOf(params.get(index++)) == 1);
+		user.setIcon(Long.valueOf(params.get(index++)));
 		user.setNick(params.get(index++));
 		user.setLogin(params.get(index++));
 	}
