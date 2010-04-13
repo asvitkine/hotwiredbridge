@@ -20,7 +20,7 @@ public class HotWiredBridge implements WiredEventHandler {
 	private SSLSocket wiredSocket;
 	private LinkedBlockingQueue<Transaction> queue;
 	private TransactionFactory factory;
-	private Map<Integer,String> userNames;
+	private Map<Long,String> userNames;
 	private List<Transaction> pendingTransactions;
 	private Map<Integer,Transaction> pendingCreateChatTransactions;
 	private boolean closed;
@@ -47,7 +47,7 @@ public class HotWiredBridge implements WiredEventHandler {
 
 		queue = new LinkedBlockingQueue<Transaction>();
 		factory = new TransactionFactory();
-		userNames = new HashMap<Integer,String>();
+		userNames = new HashMap<Long,String>();
 		pendingTransactions = new LinkedList<Transaction>();
 		pendingCreateChatTransactions = new HashMap<Integer,Transaction>();
 		

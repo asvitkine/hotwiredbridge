@@ -71,7 +71,7 @@ public abstract class WiredClient {
 
 	private OutputStream out;
 	private DataInputStream in;
-	private int localUserId;
+	private long localUserId;
 
 	public WiredClient(InputStream in, OutputStream out) {
 		this.in = new DataInputStream(in);
@@ -96,7 +96,7 @@ public abstract class WiredClient {
 		msg = readServerMessage();
 		if (msg.code != MSG_LOGIN_SUCCESS)
 			return msg.code;
-		localUserId = Integer.valueOf(msg.params.get(0));
+		localUserId = Long.valueOf(msg.params.get(0));
 		new Thread(new Runnable() { public void run() { processServerMessages(); } }).start();
 		final Timer timer = new Timer();
 		TimerTask tt = new TimerTask() { public void run() { try { sendPing(); } catch (IOException e) { timer.cancel(); } }};
@@ -104,7 +104,7 @@ public abstract class WiredClient {
 		return 0;
 	}
 
-	public int getLocalUserId() {
+	public long getLocalUserId() {
 		return localUserId;
 	}
 

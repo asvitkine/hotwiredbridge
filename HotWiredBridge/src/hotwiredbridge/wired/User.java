@@ -1,13 +1,13 @@
 package hotwiredbridge.wired;
 
 public class User {
-	private int id;
+	private long id;
 	private String nick;
 	private String login;
 	private boolean idle;
 	private boolean admin;
-	private int icon;
-	private int status;
+	private long icon;
+	private long status;
 	private String image;
 
 	public String getImage() {
@@ -34,16 +34,16 @@ public class User {
 	public void setLogin(String login) {
 		this.login = login;
 	}
-	public int getStatus() {
+	public long getStatus() {
 		return status;
 	}
 	public void setStatus(int status) {
 		this.status = status;
 	}
-	public int getId() {
+	public long getId() {
 		return id;
 	}
-	public void setId(int id) {
+	public void setId(long id) {
 		this.id = id;
 	}
 	public String getNick() {
@@ -52,10 +52,10 @@ public class User {
 	public void setNick(String nick) {
 		this.nick = nick;
 	}
-	public void setIcon(int icon) {
+	public void setIcon(long icon) {
 		this.icon = icon;
 	}
-	public int getIcon() {
+	public long getIcon() {
 		return icon;
 	}
 }
