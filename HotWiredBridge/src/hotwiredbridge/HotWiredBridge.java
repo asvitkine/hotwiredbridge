@@ -167,15 +167,8 @@ public class HotWiredBridge implements WiredEventHandler {
 					client.sendIcon(icon, iconDB.getBase64FromIconIndex(icon));
 				}
 				client.requestUserList(1);
-				/* FIXME */
-				/*
-#<Transaction:0x1f13c8 @objects=[
-	#<TransactionObject:0x1f0fe0 @id=110, @data="`p\f\260\003\200\000\000">,
-	#<TransactionObject:0x1f0f40 @id=300, @data="\0001\000\000\000\000\000\006testin">],
-@id=354, @is_error=false, @task_number=1, @type=0>
-				 */
 				t = factory.createReply(loginTransaction);
-				t.addObject(TransactionObject.SOCKET, new byte[] {(byte)0,(byte)1});
+				t.addObject(TransactionObject.SOCKET, HotlineUtils.pack("n", client.getLocalUserId()));
 				queue.offer(t);
 			} else {
 				// error -> todo: msg?
