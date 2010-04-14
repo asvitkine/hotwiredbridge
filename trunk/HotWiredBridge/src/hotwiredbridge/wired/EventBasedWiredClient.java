@@ -9,6 +9,7 @@ public class EventBasedWiredClient extends WiredClient {
 	private WiredEventHandler handler;
 	private HashMap<Integer,List<User>> users = new HashMap<Integer,List<User>>();
 	private ArrayList<FileInfo> files = new ArrayList<FileInfo>();
+	private ArrayList<NewsPost> newsPosts = new ArrayList<NewsPost>();
 
 	public EventBasedWiredClient(InputStream in, OutputStream out, WiredEventHandler handler) {
 		super(in, out);
@@ -66,6 +67,17 @@ public class EventBasedWiredClient extends WiredClient {
 			event.setFiles(files);
 			files = new ArrayList<FileInfo>();
 			handler.handleEvent(event);
+		} else if (code == MSG_NEWS) {
+			newsPosts.add(readNewsPost(params));
+		} else if (code == MSG_NEWS_DONE) {
+			NewsListEvent event = new NewsListEvent();
+			event.setNewsPosts(newsPosts);
+			newsPosts = new ArrayList<NewsPost>();
+			handler.handleEvent(event);
+		} else if (code == MSG_NEWS_POSTED) {
+			NewsPostEvent event = new NewsPostEvent();
+			event.setNewsPost(readNewsPost(params));
+			handler.handleEvent(event);			
 		} else if (code == MSG_PRIVATE_CHAT_INVITE) {
 			InviteEvent event = new InviteEvent();
 			event.setChatId(Integer.valueOf(params.get(0)));
@@ -128,6 +140,14 @@ public class EventBasedWiredClient extends WiredClient {
 			event.setErrorCode(code);
 			handler.handleEvent(event);
 		}
+	}
+
+	private NewsPost readNewsPost(List<String> params) {
+		NewsPost post = new NewsPost();
+		post.setNick(params.get(0));
+		post.setPostTime(parseDate(params.get(1)));
+		post.setPost(params.get(2));
+		return post;
 	}
 
 	private static FileInfo readFile(List<String> params) {

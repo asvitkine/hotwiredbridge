@@ -13,6 +13,8 @@ public class Transaction {
 	public static final int REPLY = 1;
 
 	public static final int ID_GETNEWS = 101;
+	public static final int ID_NEWS_POSTED = 102;
+	public static final int ID_POST_NEWS = 103;
 	public static final int ID_PRIVATE_MESSAGE = 104;
 	public static final int ID_SEND_CHAT = 105;
 	public static final int ID_RELAY_CHAT = 106;

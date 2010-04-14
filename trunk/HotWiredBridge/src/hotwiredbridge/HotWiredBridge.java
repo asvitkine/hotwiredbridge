@@ -178,10 +178,16 @@ public class HotWiredBridge implements WiredEventHandler {
 			break;
 		}
 		case Transaction.ID_GETNEWS:
-			t = factory.createReply(t);
-			t.addObject(TransactionObject.MESSAGE, new byte[0]);
-			queue.offer(t);
+			client.requestNews();
+			synchronized (pendingTransactions) {
+				pendingTransactions.add(t);
+			}
 			break;
+		case Transaction.ID_POST_NEWS: {
+			String message = MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE));
+			client.postNews(message);
+			break;
+		}
 		case Transaction.ID_GETUSERLIST:
 			client.requestUserList(1);
 			synchronized (pendingTransactions) {
@@ -547,6 +553,35 @@ public class HotWiredBridge implements WiredEventHandler {
 							pendingTransactions.remove(t);
 							break;
 						}
+					}
+				}
+			}
+		} else if (event instanceof NewsPostEvent) {
+			NewsPostEvent newsPostEvent = (NewsPostEvent) event;
+			NewsPost post = newsPostEvent.getNewsPost();
+			Transaction t = factory.createRequest(Transaction.ID_NEWS_POSTED);
+			String message = String.format("From %s (%s):\r\r%s\r_________________________________________________\r",
+				post.getNick(), new Date(post.getPostTime()).toString(), post.getPost());
+			t.addObject(TransactionObject.MESSAGE, MacRoman.fromString(message));
+			queue.offer(t);
+		} else if (event instanceof NewsListEvent) {
+			NewsListEvent newsListEvent = (NewsListEvent) event;
+			synchronized (pendingTransactions) {
+				for (Transaction t : pendingTransactions) {
+					if (t.getId() == Transaction.ID_GETNEWS) {
+						Transaction reply = factory.createReply(t);
+						StringBuilder sb = new StringBuilder();
+						for (NewsPost post : newsListEvent.getNewsPosts()) {
+							if (post != newsListEvent.getNewsPosts().get(0)) {
+								sb.append("_________________________________________________\r");
+							}
+							sb.append(String.format("From %s (%s):\r\r%s\r",
+								post.getNick(), new Date(post.getPostTime()).toString(), post.getPost()));
+						}
+						reply.addObject(TransactionObject.MESSAGE, MacRoman.fromString(sb.toString()));
+						queue.offer(reply);
+						pendingTransactions.remove(t);
+						break;
 					}
 				}
 			}
