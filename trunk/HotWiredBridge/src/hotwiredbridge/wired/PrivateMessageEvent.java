@@ -1,13 +1,13 @@
 package hotwiredbridge.wired;
 
 public class PrivateMessageEvent extends WiredEvent {
-	private int fromUserId;
+	private long fromUserId;
 	private String message;
 
-	public int getFromUserId() {
+	public long getFromUserId() {
 		return fromUserId;
 	}
-	public void setFromUserId(int fromUserId) {
+	public void setFromUserId(long fromUserId) {
 		this.fromUserId = fromUserId;
 	}
 	public String getMessage() {

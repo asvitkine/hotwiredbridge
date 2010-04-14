@@ -7,7 +7,7 @@ import java.util.*;
 
 public class EventBasedWiredClient extends WiredClient {
 	private WiredEventHandler handler;
-	private HashMap<Integer,List<User>> users = new HashMap<Integer,List<User>>();
+	private HashMap<Long,List<User>> users = new HashMap<Long,List<User>>();
 	private ArrayList<FileInfo> files = new ArrayList<FileInfo>();
 	private ArrayList<NewsPost> newsPosts = new ArrayList<NewsPost>();
 
@@ -26,13 +26,13 @@ public class EventBasedWiredClient extends WiredClient {
 		}
 		if (code == MSG_CHAT || code == MSG_ACTION_CHAT) {
 			ChatEvent event = new ChatEvent();
-			event.setChatId(Integer.valueOf(params.get(0)));
-			event.setUserId(Integer.valueOf(params.get(1)));
+			event.setChatId(Long.valueOf(params.get(0)));
+			event.setUserId(Long.valueOf(params.get(1)));
 			event.setMessage(params.get(2));
 			event.setEmote(code == WiredClient.MSG_ACTION_CHAT);
 			handler.handleEvent(event);
 		} else if (code == MSG_USERLIST) {
-			int chatId = Integer.valueOf(params.get(0));
+			long chatId = Long.valueOf(params.get(0));
 			List<User> userlist = users.get(chatId);
 			if (userlist == null) {
 				userlist = new ArrayList<User>();
@@ -40,7 +40,7 @@ public class EventBasedWiredClient extends WiredClient {
 			}
 			userlist.add(readUser(params));
 		} else if (code == MSG_USERLIST_DONE) {
-			int chatId = Integer.valueOf(params.get(0));
+			long chatId = Long.valueOf(params.get(0));
 			List<User> userlist = users.get(chatId);
 			if (userlist != null) {
 				UserListEvent event = new UserListEvent();
@@ -51,13 +51,13 @@ public class EventBasedWiredClient extends WiredClient {
 			}
 		} else if (code == MSG_CLIENT_JOIN) {
 			UserJoinEvent event = new UserJoinEvent();
-			event.setChatId(Integer.valueOf(params.get(0)));
+			event.setChatId(Long.valueOf(params.get(0)));
 			event.setUser(readUser(params));
 			handler.handleEvent(event);
 		} else if (code == MSG_CLIENT_LEAVE) {
 			UserLeaveEvent event = new UserLeaveEvent();
-			event.setChatId(Integer.valueOf(params.get(0)));
-			event.setUserId(Integer.valueOf(params.get(1)));
+			event.setChatId(Long.valueOf(params.get(0)));
+			event.setUserId(Long.valueOf(params.get(1)));
 			handler.handleEvent(event);
 		} else if (code == MSG_FILE_LISTING) {
 			files.add(readFile(params));
@@ -80,12 +80,12 @@ public class EventBasedWiredClient extends WiredClient {
 			handler.handleEvent(event);			
 		} else if (code == MSG_PRIVATE_CHAT_INVITE) {
 			InviteEvent event = new InviteEvent();
-			event.setChatId(Integer.valueOf(params.get(0)));
-			event.setUserId(Integer.valueOf(params.get(1)));
+			event.setChatId(Long.valueOf(params.get(0)));
+			event.setUserId(Long.valueOf(params.get(1)));
 			handler.handleEvent(event);
 		} else if (code == MSG_PRIVATE_MESSAGE) {
 			PrivateMessageEvent event = new PrivateMessageEvent();
-			event.setFromUserId(Integer.valueOf(params.get(0)));
+			event.setFromUserId(Long.valueOf(params.get(0)));
 			event.setMessage(params.get(1));
 			handler.handleEvent(event);
 		} else if (code == MSG_CLIENT_INFO) {
@@ -111,16 +111,16 @@ public class EventBasedWiredClient extends WiredClient {
 			handler.handleEvent(event);
 		} else if (code == MSG_PRIVATE_CHAT_CREATED) {
 			ChatCreatedEvent event = new ChatCreatedEvent();
-			event.setChatId(Integer.valueOf(params.get(0)));
+			event.setChatId(Long.valueOf(params.get(0)));
 			handler.handleEvent(event);
 		} else if (code == MSG_PRIVATE_CHAT_DECLINED) {
 			DeclineChatEvent event = new DeclineChatEvent();
-			event.setChatId(Integer.valueOf(params.get(0)));
-			event.setUserId(Integer.valueOf(params.get(1)));
+			event.setChatId(Long.valueOf(params.get(0)));
+			event.setUserId(Long.valueOf(params.get(1)));
 			handler.handleEvent(event);
 		} else if (code == MSG_CHAT_TOPIC) {
 			TopicChangedEvent event = new TopicChangedEvent();
-			event.setChatId(Integer.valueOf(params.get(0)));
+			event.setChatId(Long.valueOf(params.get(0)));
 			event.setNick(params.get(1));
 			event.setLogin(params.get(2));
 			event.setIp(params.get(3));
@@ -154,8 +154,8 @@ public class EventBasedWiredClient extends WiredClient {
 		FileInfo file = new FileInfo();
 		file.setPath(params.get(0));
 		file.setName(new File(params.get(0)).getName());
-		file.setType(Integer.valueOf(params.get(1)));		
-		file.setSize(Integer.valueOf(params.get(2)));
+		file.setType(Long.valueOf(params.get(1)));		
+		file.setSize(Long.valueOf(params.get(2)));
 		file.setCreationDate(parseDate(params.get(3)));
 		file.setModificationDate(parseDate(params.get(4)));
 		//file.setIcon(getIconAsString(params.get(0)));

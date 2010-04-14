@@ -1,22 +1,22 @@
 package hotwiredbridge.wired;
 
 public class DeclineChatEvent extends WiredEvent {
-	private int chatId;
-	private int userId;
+	private long chatId;
+	private long userId;
 
-	public int getChatId() {
+	public long getChatId() {
 		return chatId;
 	}
 
-	public void setChatId(int chatId) {
+	public void setChatId(long chatId) {
 		this.chatId = chatId;
 	}
 
-	public int getUserId() {
+	public long getUserId() {
 		return userId;
 	}
 
-	public void setUserId(int userId) {
+	public void setUserId(long userId) {
 		this.userId = userId;
 	}
 }

@@ -8,7 +8,7 @@ public class FileInfo {
 
 	private String path;
 	private String name;
-	private int type;
+	private long type;
 	private long size;
 	private long creationDate;
 	private long modificationDate;
@@ -26,10 +26,10 @@ public class FileInfo {
 	public void setPath(String path) {
 		this.path = path;
 	}
-	public int getType() {
+	public long getType() {
 		return type;
 	}
-	public void setType(int type) {
+	public void setType(long type) {
 		this.type = type;
 	}
 	public boolean isDirectory() {

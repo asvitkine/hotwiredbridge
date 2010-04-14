@@ -1,17 +1,17 @@
 package hotwiredbridge.wired;
 
 public class TopicChangedEvent extends WiredEvent {
-	private int chatId;
+	private long chatId;
 	private String nick;
 	private String login;
 	private String ip;
 	private long time;
 	private String topic;
 
-	public int getChatId() {
+	public long getChatId() {
 		return chatId;
 	}
-	public void setChatId(int chatId) {
+	public void setChatId(long chatId) {
 		this.chatId = chatId;
 	}
 	public String getNick() {

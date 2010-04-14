@@ -121,7 +121,7 @@ public abstract class WiredClient {
 		}
 	}
 
-	public synchronized void banUser(int userId, String message) throws IOException {
+	public synchronized void banUser(long userId, String message) throws IOException {
 		send("BAN").send(SP).send(""+userId).send(FS).send(message).send(EOT);
 	}
 
@@ -153,7 +153,7 @@ public abstract class WiredClient {
 		send("CREATEGROUP").send(SP).send(name).send(FS).send(privileges).send(EOT);
 	}
 
-	public synchronized void declineInvitation(int chatId) throws IOException {
+	public synchronized void declineInvitation(long chatId) throws IOException {
 		send("DECLINE").send(SP).send(""+chatId).send(EOT);
 	}
 
@@ -193,7 +193,7 @@ public abstract class WiredClient {
 		send("HELLO").send(EOT);
 	}
 
-	public synchronized void sendIcon(int iconId, String base64Image) throws IOException {
+	public synchronized void sendIcon(long iconId, String base64Image) throws IOException {
 		send("ICON").send(SP).send(""+iconId);
 		if (base64Image != null) {
 			send(FS).send(base64Image);
@@ -201,7 +201,7 @@ public abstract class WiredClient {
 		send(EOT);
 	}
 	
-	public void sendIcon(int iconId, byte[] image) throws IOException {
+	public void sendIcon(long iconId, byte[] image) throws IOException {
 		String base64Image = null;
 		if (image != null) {
 			base64Image = bytesToBase64(image);
@@ -209,23 +209,23 @@ public abstract class WiredClient {
 		sendIcon(iconId, base64Image);
 	}
 
-	public synchronized void requestUserInfo(int userId) throws IOException {
+	public synchronized void requestUserInfo(long userId) throws IOException {
 		send("INFO").send(SP).send(""+userId).send(EOT);
 	}
 	
-	public synchronized void inviteToChat(int userId, int chatId) throws IOException {
+	public synchronized void inviteToChat(long userId, long chatId) throws IOException {
 		send("INVITE").send(SP).send(""+userId).send(FS).send(""+chatId).send(EOT);
 	}
 
-	public synchronized void joinChat(int chatId) throws IOException {
+	public synchronized void joinChat(long chatId) throws IOException {
 		send("JOIN").send(SP).send(""+chatId).send(EOT);
 	}
 
-	public synchronized void kickUser(int userId, String message) throws IOException {
+	public synchronized void kickUser(long userId, String message) throws IOException {
 		send("KICK").send(SP).send(""+userId).send(FS).send(message).send(EOT);
 	}
 
-	public synchronized void leaveChat(int chatId) throws IOException {
+	public synchronized void leaveChat(long chatId) throws IOException {
 		send("LEAVE").send(SP).send(""+chatId).send(EOT);
 	}
 
@@ -233,7 +233,7 @@ public abstract class WiredClient {
 		send("LIST").send(SP).send(path).send(EOT);
 	}
 	
-	public synchronized void sendEmoteMessage(int chatId, String message) throws IOException {
+	public synchronized void sendEmoteMessage(long chatId, String message) throws IOException {
 		send("ME").send(SP).send(""+chatId).send(FS).send(message).send(EOT);
 	}
 
@@ -241,7 +241,7 @@ public abstract class WiredClient {
 		send("MOVE").send(SP).send(from).send(FS).send(to).send(EOT);
 	}
 	
-	public synchronized void sendPrivateMessage(int userId, String message) throws IOException {
+	public synchronized void sendPrivateMessage(long userId, String message) throws IOException {
 		send("MSG").send(SP).send(""+userId).send(FS).send(message).send(EOT);
 	}
 
@@ -285,7 +285,7 @@ public abstract class WiredClient {
 		send("READGROUP").send(SP).send(name).send(EOT);
 	}
 
-	public synchronized void sendChatMessage(int chatId, String message) throws IOException {
+	public synchronized void sendChatMessage(long chatId, String message) throws IOException {
 		send("SAY").send(SP).send(""+chatId).send(FS).send(message).send(EOT);
 	}
 
@@ -301,7 +301,7 @@ public abstract class WiredClient {
 		send("STATUS").send(SP).send(status).send(EOT);
 	}
 	
-	public synchronized void changeTopic(int chatId, String topic) throws IOException {
+	public synchronized void changeTopic(long chatId, String topic) throws IOException {
 		send("TOPIC").send(SP).send(""+chatId).send(FS).send(topic).send(EOT);
 	}
 
@@ -321,7 +321,7 @@ public abstract class WiredClient {
 		send("USERS").send(EOT);
 	}
 
-	public synchronized void requestUserList(int chatId) throws IOException {
+	public synchronized void requestUserList(long chatId) throws IOException {
 		send("WHO").send(SP).send(""+chatId).send(EOT);
 	}
 
