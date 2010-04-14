@@ -22,7 +22,7 @@ public class HotWiredBridge implements WiredEventHandler {
 	private TransactionFactory factory;
 	private Map<Long,String> userNames;
 	private List<Transaction> pendingTransactions;
-	private Map<Integer,Transaction> pendingCreateChatTransactions;
+	private Map<Long,Transaction> pendingCreateChatTransactions;
 	private boolean closed;
 
 	public HotWiredBridge(WiredServerConfig config, IconDatabase iconDB, InputStream in, OutputStream out) {
@@ -49,7 +49,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		factory = new TransactionFactory();
 		userNames = new HashMap<Long,String>();
 		pendingTransactions = new LinkedList<Transaction>();
-		pendingCreateChatTransactions = new HashMap<Integer,Transaction>();
+		pendingCreateChatTransactions = new HashMap<Long,Transaction>();
 		
 		new Thread() {
 			public void run() {
@@ -497,7 +497,7 @@ public class HotWiredBridge implements WiredEventHandler {
 			}
 		} else if (event instanceof TopicChangedEvent) {
 			TopicChangedEvent topicChangedEvent = (TopicChangedEvent) event;
-			int chatId = topicChangedEvent.getChatId();
+			long chatId = topicChangedEvent.getChatId();
 			synchronized (pendingTransactions) {
 				for (Transaction t : pendingTransactions) {
 					if (t.getId() == Transaction.ID_JOIN_PCHAT && t.getObjectDataAsInt(TransactionObject.CHATWINDOW) == chatId) {

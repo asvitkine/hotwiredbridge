@@ -1,13 +1,13 @@
 package hotwiredbridge.wired;
 
 public class ChatCreatedEvent extends WiredEvent {
-	private int chatId;
+	private long chatId;
 
-	public int getChatId() {
+	public long getChatId() {
 		return chatId;
 	}
 
-	public void setChatId(int chatId) {
+	public void setChatId(long chatId) {
 		this.chatId = chatId;
 	}
 }

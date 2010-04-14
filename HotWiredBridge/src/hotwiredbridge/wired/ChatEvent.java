@@ -1,22 +1,22 @@
 package hotwiredbridge.wired;
 
 public class ChatEvent extends WiredEvent {
-	private int userId;
-	private int chatId;
+	private long userId;
+	private long chatId;
 	private boolean emote;
 	private String message;
 
-	public int getUserId() {
+	public long getUserId() {
 		return userId;
 	}
-	public void setUserId(int userId) {
+	public void setUserId(long userId) {
 		this.userId = userId;
 	}
 
-	public int getChatId() {
+	public long getChatId() {
 		return chatId;
 	}
-	public void setChatId(int chatId) {
+	public void setChatId(long chatId) {
 		this.chatId = chatId;
 	}
 
