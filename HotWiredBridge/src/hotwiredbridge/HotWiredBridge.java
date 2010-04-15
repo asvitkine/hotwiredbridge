@@ -257,6 +257,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_DOWNLOAD: {
 			String path = convertPath(t.getObjectData(TransactionObject.PATH));
 			path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
+			System.err.println(path);
 			/* TODO: Resume info. */
 			client.getFile(path, 0);
 			synchronized (pendingTransactions) {
@@ -555,24 +556,42 @@ public class HotWiredBridge implements WiredEventHandler {
 			FileInfoEvent fileInfoEvent = (FileInfoEvent) event;
 			synchronized (pendingTransactions) {
 				for (Transaction t : pendingTransactions) {
-					if (t.getId() == Transaction.ID_GETFILEINFO) {
+					if (t.getId() == Transaction.ID_GETFILEINFO ||
+						t.getId() == Transaction.ID_DOWNLOAD ||
+						t.getId() == Transaction.ID_UPLOAD)
+					{
 						String path = convertPath(t.getObjectData(TransactionObject.PATH));
 						path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
 						FileInfo fileInfo = fileInfoEvent.getFileInfo();
 						if (path.equals(fileInfo.getPath())) {
-							Transaction reply = factory.createReply(t);
-							reply.addObject(TransactionObject.FILETYPE, fileInfo.isDirectory() ? "fldr".getBytes() : "????".getBytes());
-							reply.addObject(TransactionObject.FILETYPESTR, "????".getBytes());
-							reply.addObject(TransactionObject.FILECREATORSTR, "????".getBytes());
-							reply.addObject(TransactionObject.FILENAME, MacRoman.fromString(fileInfo.getName()));
-							reply.addObject(TransactionObject.FILECREATED, HotlineUtils.pack("D", fileInfo.getCreationDate()));
-							reply.addObject(TransactionObject.FILEMODIFIED, HotlineUtils.pack("D", fileInfo.getModificationDate()));
-							reply.addObject(TransactionObject.FILESIZE, HotlineUtils.pack("N", fileInfo.getSize()));
-							if (fileInfoEvent.getComment() != null) {
-								reply.addObject(TransactionObject.COMMENT, MacRoman.fromString(fileInfoEvent.getComment()));
+							if (t.getId() == Transaction.ID_GETFILEINFO) {
+								Transaction reply = factory.createReply(t);
+								reply.addObject(TransactionObject.FILETYPE, fileInfo.isDirectory() ? "fldr".getBytes() : "????".getBytes());
+								reply.addObject(TransactionObject.FILETYPESTR, "????".getBytes());
+								reply.addObject(TransactionObject.FILECREATORSTR, "????".getBytes());
+								reply.addObject(TransactionObject.FILENAME, MacRoman.fromString(fileInfo.getName()));
+								reply.addObject(TransactionObject.FILECREATED, HotlineUtils.pack("D", fileInfo.getCreationDate()));
+								reply.addObject(TransactionObject.FILEMODIFIED, HotlineUtils.pack("D", fileInfo.getModificationDate()));
+								reply.addObject(TransactionObject.FILESIZE, HotlineUtils.pack("N", fileInfo.getSize()));
+								if (fileInfoEvent.getComment() != null) {
+									reply.addObject(TransactionObject.COMMENT, MacRoman.fromString(fileInfoEvent.getComment()));
+								}
+								queue.offer(reply);
+								pendingTransactions.remove(t);
+							} else {
+								/* TODO: Handle uploads and resumes. */
+								int hotlineTransferId;
+								String wiredTransferId = new String(t.getObjectData(TransactionObject.TRANSFER_ID));
+								if (t.getId() == Transaction.ID_DOWNLOAD)
+									hotlineTransferId = fileTransferMap.createDownloadTransfer(wiredTransferId, fileInfo).getHotlineTransferId();
+								else
+									hotlineTransferId = fileTransferMap.createDownloadTransfer(wiredTransferId, fileInfo).getHotlineTransferId();
+								Transaction reply = factory.createReply(t);
+								reply.addObject(TransactionObject.TRANSFER_SIZE, HotlineUtils.pack("N", fileInfo.getSize()));
+								reply.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
+								queue.offer(reply);
+								pendingTransactions.remove(t);
 							}
-							queue.offer(reply);
-							pendingTransactions.remove(t);
 							break;
 						}
 					}
@@ -615,19 +634,8 @@ public class HotWiredBridge implements WiredEventHandler {
 						String path = convertPath(t.getObjectData(TransactionObject.PATH));
 						path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
 						if (path.equals(transferReadyEvent.getPath())) {
-							/* TODO: Handle uploads and resumes. */
-							int hotlineTransferId;
-							String wiredTransferId = transferReadyEvent.getHash();
-							if (t.getId() == Transaction.ID_DOWNLOAD)
-								hotlineTransferId = fileTransferMap.createDownloadTransfer(wiredTransferId, path).getHotlineTransferId();
-							else
-								hotlineTransferId = fileTransferMap.createDownloadTransfer(wiredTransferId, path).getHotlineTransferId();
-							/* FIXME: need to stat the file to get the size! */
-							Transaction reply = factory.createReply(t);
-							reply.addObject(TransactionObject.TRANSFER_SIZE, HotlineUtils.pack("N", 1));
-							reply.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
-							queue.offer(reply);
-							pendingTransactions.remove(t);
+							t.addObject(TransactionObject.TRANSFER_ID, transferReadyEvent.getHash().getBytes());
+							try{client.requestFileInfo(path);}catch (Exception e){e.printStackTrace();}
 							break;
 						}
 					}

@@ -1,5 +1,7 @@
 package hotwiredbridge;
 
+import hotwiredbridge.wired.FileInfo;
+
 import java.util.Map;
 import java.util.HashMap;
 
@@ -14,15 +16,15 @@ public class FileTransferMap {
 		nextHotlineTransferId = 1;
 	}
 
-	public synchronized FileTransfer createDownloadTransfer(String wiredTransferId, String path) {
-		FileTransfer fileTransfer = new FileTransfer(nextHotlineTransferId++, wiredTransferId, path, false);
+	public synchronized FileTransfer createDownloadTransfer(String wiredTransferId, FileInfo fileInfo) {
+		FileTransfer fileTransfer = new FileTransfer(nextHotlineTransferId++, wiredTransferId, fileInfo, false);
 		wMap.put(wiredTransferId, fileTransfer);
 		hMap.put(fileTransfer.getHotlineTransferId(), fileTransfer);
 		return fileTransfer;
 	}
 
-	public synchronized FileTransfer createUploadTransfer(String wiredTransferId, String path) {
-		FileTransfer fileTransfer = new FileTransfer(nextHotlineTransferId++, wiredTransferId, path, false);
+	public synchronized FileTransfer createUploadTransfer(String wiredTransferId, FileInfo fileInfo) {
+		FileTransfer fileTransfer = new FileTransfer(nextHotlineTransferId++, wiredTransferId, fileInfo, false);
 		wMap.put(wiredTransferId, fileTransfer);
 		hMap.put(fileTransfer.getHotlineTransferId(), fileTransfer);
 		return fileTransfer;
@@ -36,33 +38,4 @@ public class FileTransferMap {
 		return hMap.get(hotlineTransferId);
 	}
 
-	public static class FileTransfer {
-		private int hotlineTransferId;
-		private String wiredTransferId;
-		private String path;
-		private boolean upload;
-
-		private FileTransfer(int hotlineTransferId, String wiredTransferId, String path, boolean upload) {
-			this.hotlineTransferId = hotlineTransferId;
-			this.wiredTransferId = wiredTransferId;
-			this.path = path;
-			this.upload = upload;
-		}
-
-		public int getHotlineTransferId() {
-			return hotlineTransferId;
-		}
-		public String getWiredTransferId() {
-			return wiredTransferId;
-		}
-		public String getPath() {
-			return path;
-		}
-		public boolean isUpload() {
-			return upload;
-		}
-		public boolean isDownload() {
-			return !upload;
-		}
-	}
 }

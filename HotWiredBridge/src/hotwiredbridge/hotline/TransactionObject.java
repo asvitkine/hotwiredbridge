@@ -8,8 +8,8 @@ public class TransactionObject {
 	public static final int ICON = 104;
 	public static final int LOGIN = 105;
 	public static final int PASSWORD = 106;
-	public static final int TRANSFER_SIZE = 107;	
-	public static final int TRANSFER_ID = 108;
+	public static final int TRANSFER_ID = 107;	
+	public static final int TRANSFER_SIZE = 108;
 	public static final int PARAMETER = 109;
 	public static final int PRIVS = 110;
 	public static final int STATUS = 112;

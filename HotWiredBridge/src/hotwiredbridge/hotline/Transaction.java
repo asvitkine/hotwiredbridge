@@ -94,7 +94,7 @@ public class Transaction {
 	public String toString() {
 		String s = String.format("%d %d %d with %d objecs:\n", type, id, taskNumber, objects.size());
 		for (TransactionObject o : objects) {
-			s += "  obj(" + o.id +") -> " + WiredClient.bytesToHex(o.data) + " \n";
+			s += "  obj(" + o.id +") -> " + (o.data == null ? "(null)" : WiredClient.bytesToHex(o.data)) + " \n";
 		}
 		return s;
 	}
