@@ -134,6 +134,12 @@ public class EventBasedWiredClient extends WiredClient {
 			if (params.size() > 6)
 				event.setComment(params.get(6));
 			handler.handleEvent(event);
+		} else if (code == MSG_TRANSFER_READY) {
+			TransferReadyEvent event = new TransferReadyEvent();
+			event.setPath(params.get(0));
+			event.setOffset(Long.valueOf(params.get(1)));
+			event.setHash(params.get(2));
+			handler.handleEvent(event);
 		} else if (code >= 500 && code < 600) {
 			WiredErrorEvent event = new WiredErrorEvent();
 			event.setMessage(params.get(0));
