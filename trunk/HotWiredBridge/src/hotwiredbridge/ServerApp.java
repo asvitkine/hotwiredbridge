@@ -2,20 +2,16 @@ package hotwiredbridge;
 
 import hotwiredbridge.hotline.IconDatabase;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.UnknownHostException;
+import java.io.*;
+import java.net.*;
 
 public class ServerApp {
 	public static void main(String[] args) throws IOException {
-		WiredServerConfig config = new WiredServerConfig("localhost", 2000);
+		final WiredServerConfig config = new WiredServerConfig("localhost", 2000);
 
 		System.out.println("INFO: Starting server...");
 
-		IconDatabase iconDB = new IconDatabase();
+		final IconDatabase iconDB = new IconDatabase();
 		try {
 			System.out.println("INFO: Loading Hotline icons...");
 			iconDB.loadIconsFromResourceFile(new File("/Users/shadowknight/Downloads/HotlineConnectClient-Mac/HLclient19.bin"));
@@ -34,12 +30,14 @@ public class ServerApp {
 
 		while (true) {
 			System.out.println("INFO: Waiting for connections...");
-			Socket socket = serverSocket.accept();
+			final Socket socket = serverSocket.accept();
 			System.out.println("INFO: Client connection from: " + socket.getInetAddress().getHostAddress() + ":" + port);
-			final HotWiredBridge bridge = new HotWiredBridge(config, iconDB, socket.getInputStream(), socket.getOutputStream());
 			new Thread() {
 				public void run() {
 					try {
+						InputStream in = socket.getInputStream();
+						OutputStream out = socket.getOutputStream();
+						HotWiredBridge bridge = new HotWiredBridge(config, iconDB, in, out);
 						bridge.run();
 					} catch (Exception e) {
 						e.printStackTrace();
