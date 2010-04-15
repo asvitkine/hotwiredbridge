@@ -4,13 +4,7 @@ import java.io.*;
 import java.util.*;
 import java.security.*;
 
-public abstract class WiredClient {
-	public static final byte EOT = 4;
-	public static final byte FS = 28;
-	public static final byte GS = 29;
-	public static final byte RS = 30;
-	public static final byte SP = 32;
-	
+public abstract class WiredClient extends WiredClientBase {	
 	public static final int MSG_SERVER_INFO = 200;
 	public static final int MSG_LOGIN_SUCCESS = 201;
 	public static final int MSG_PING_REPLY = 202;
@@ -69,13 +63,13 @@ public abstract class WiredClient {
 	public static final int MSG_GROUP_LISTING = 620;
 	public static final int MSG_GROUP_LISTING_DONE = 621;
 
-	private OutputStream out;
-	private DataInputStream in;
 	private long localUserId;
 
+	protected DataInputStream in;
+
 	public WiredClient(InputStream in, OutputStream out) {
+		super(out);
 		this.in = new DataInputStream(in);
-		this.out = out;
 	}
 
 	private String subst(String defaultString, String argument) {
@@ -305,10 +299,6 @@ public abstract class WiredClient {
 		send("TOPIC").send(SP).send(""+chatId).send(FS).send(topic).send(EOT);
 	}
 
-	public synchronized void identifyTransfer(String hash) throws IOException {
-		send("TRANSFER").send(SP).send(hash).send(EOT);
-	}
-	
 	public synchronized void sendFolderType(String path, int folderType) throws IOException {
 		send("TYPE").send(SP).send(path).send(FS).send(""+folderType).send(EOT);
 	}
@@ -326,20 +316,18 @@ public abstract class WiredClient {
 	}
 
 	protected WiredClient send(String str) throws IOException {
-		out.write(str.getBytes("UTF-8"));
-		return this;
+		return (WiredClient) super.send(str);
 	}
 
 	protected WiredClient send(boolean b) throws IOException {
-		return send(b ? "1" : "0");
+		return (WiredClient) super.send(b);
 	}
 
 	protected WiredClient send(byte b) throws IOException {
-		out.write(b);
-		return this;
+		return (WiredClient) super.send(b);
 	}
-
-	protected WiredClient send(Priveleges p) throws IOException {
+	
+	protected WiredClientBase send(Priveleges p) throws IOException {
 		return
 			send(p.getCanGetUserInfo()).send(FS).send(p.getCanBroadcast()).send(FS).
 			send(p.getCanPostNews()).send(FS).send(p.getCanClearNews()).send(FS).
