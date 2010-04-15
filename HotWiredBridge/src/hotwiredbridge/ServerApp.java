@@ -18,7 +18,9 @@ public class ServerApp {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+
+		final FileTransferMap fileTransferMap = new FileTransferMap();
+
 		int port = 4000;
 		ServerSocket serverSocket = new ServerSocket(port);
 		try {
@@ -27,6 +29,17 @@ public class ServerApp {
 		} catch (UnknownHostException e) {
 			System.out.println("WARNING: Unable to determine this host's address");
 		}
+	
+		final int fileBridgePort = port + 1;
+		new Thread() {
+			public void run() {
+				try {
+					runFileBridgeServer(config, fileTransferMap, fileBridgePort);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}.start();
 
 		while (true) {
 			System.out.println("INFO: Waiting for connections...");
@@ -37,7 +50,35 @@ public class ServerApp {
 					try {
 						InputStream in = socket.getInputStream();
 						OutputStream out = socket.getOutputStream();
-						HotWiredBridge bridge = new HotWiredBridge(config, iconDB, in, out);
+						HotWiredBridge bridge = new HotWiredBridge(config, iconDB, fileTransferMap, in, out);
+						bridge.run();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}.start();
+		}
+	}
+
+	private static void runFileBridgeServer(final WiredServerConfig config, final FileTransferMap fileTransferMap, int port) throws IOException {
+		ServerSocket serverSocket = new ServerSocket(port);
+		try {
+			InetAddress address = InetAddress.getLocalHost();
+			System.out.println("INFO: File bridge running on: " + address.getHostAddress() + ":" + port);
+		} catch (UnknownHostException e) {
+			System.out.println("WARNING: Unable to determine this host's address");
+		}
+		
+		while (true) {
+			System.out.println("INFO: Waiting for file protocol connections...");
+			final Socket socket = serverSocket.accept();
+			System.out.println("INFO: File protocol connection from: " + socket.getInetAddress().getHostAddress() + ":" + port);
+			new Thread() {
+				public void run() {
+					try {
+						InputStream in = socket.getInputStream();
+						OutputStream out = socket.getOutputStream();
+						HotWiredFileBridge bridge = new HotWiredFileBridge(config, fileTransferMap, in, out);
 						bridge.run();
 					} catch (Exception e) {
 						e.printStackTrace();

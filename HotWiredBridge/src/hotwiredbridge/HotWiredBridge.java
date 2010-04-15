@@ -13,6 +13,7 @@ import javax.net.ssl.*;
 public class HotWiredBridge implements WiredEventHandler {
 	private WiredServerConfig config;
 	private IconDatabase iconDB;
+	private FileTransferMap fileTransferMap;
 	private DataInputStream in;
 	private DataOutputStream out;
 
@@ -25,9 +26,11 @@ public class HotWiredBridge implements WiredEventHandler {
 	private Map<Long,Transaction> pendingCreateChatTransactions;
 	private boolean closed;
 
-	public HotWiredBridge(WiredServerConfig config, IconDatabase iconDB, InputStream in, OutputStream out) {
+	public HotWiredBridge(WiredServerConfig config, IconDatabase iconDB,
+			FileTransferMap fileTransferMap, InputStream in, OutputStream out) {
 		this.config = config;
 		this.iconDB = iconDB;
+		this.fileTransferMap = fileTransferMap;
 		this.in = new DataInputStream(in);
 		this.out = new DataOutputStream(out);
 	}
