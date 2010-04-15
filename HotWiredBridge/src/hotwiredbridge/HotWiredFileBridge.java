@@ -1,5 +1,6 @@
 package hotwiredbridge;
 
+import hotwiredbridge.hotline.HotlineUtils;
 import hotwiredbridge.hotline.MacRoman;
 import hotwiredbridge.wired.WiredTransferClient;
 
@@ -85,8 +86,8 @@ public class HotWiredFileBridge {
 				out.writeInt(0);
 				out.writeInt(0);
 				out.writeInt(0);
-				out.write(new byte[] {(byte)0x07, (byte)0x70, (byte)0x00, (byte)0x00,(byte) 0xAF,(byte) 0xAE, 0x17, 0x23});
-				out.write(new byte[] {(byte)0x07, (byte)0x70, (byte)0x00, (byte)0x00,(byte) 0xAF,(byte) 0xAE, 0x17, 0x23});
+				out.write(HotlineUtils.pack("D", transfer.getFileInfo().getCreationDate()));
+				out.write(HotlineUtils.pack("D", transfer.getFileInfo().getModificationDate()));
 				out.writeShort(0);
 				out.writeShort(filename.length);
 				out.write(filename);
