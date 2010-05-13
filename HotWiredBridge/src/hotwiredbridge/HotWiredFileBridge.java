@@ -3,6 +3,7 @@ package hotwiredbridge;
 import hotwiredbridge.hotline.HotlineUtils;
 import hotwiredbridge.hotline.MacRoman;
 import hotwiredbridge.wired.WiredTransferClient;
+import hotwiredbridge.wired.WiredUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -40,6 +41,141 @@ public class HotWiredFileBridge {
 			return;
 		}
 	}
+	
+	private static String readString(DataInputStream in) throws IOException {
+		int length = in.readUnsignedShort();
+		byte[] data = new byte[length];
+		in.readFully(data);
+		return MacRoman.toString(data);
+	}
+	
+	private static String readTag(DataInputStream in) throws IOException {
+		byte[] tag = new byte[4];
+		in.readFully(tag);
+		return new String(tag);
+	}
+
+	private void receiveFileFromHotline(FileTransfer transfer) throws Exception {
+		while (in.available() > 0) {
+			String tag = readTag(in);
+			if (tag.equals("FILP")) {
+				byte[] header = new byte[20];
+				in.readFully(header);
+			} else if (tag.equals("INFO")) {
+				in.readInt();
+				in.readInt();
+				int length = in.readInt();
+				byte[] info = new byte[length];
+				in.readFully(info);
+			} else if (tag.equals("DATA")) {
+				in.readInt();
+				in.readInt();
+				int length = in.readInt();
+				int checksumSize = (1024 * 1024 > length ? length : 1024 * 1024);
+				byte[] checksumBuf = new byte[checksumSize];
+				in.readFully(checksumBuf);
+				String checksum = WiredUtils.SHA1(checksumBuf);
+				String path = transfer.getFileInfo().getPath();
+				// We have enough info to send a putFile() to the wired server.
+				transfer.getHotWiredBridge().getWiredClient().putFile(path, length, checksum);
+				// Wait for wired to reply and tell us to proceed with the upload.
+				transfer = fileTransferMap.waitForWiredTransferIdForUploadTransfer(transfer);
+				String wiredTransferId = transfer.getWiredTransferId();
+				SSLSocket socket = openWiredSocket(config.getHost(), config.getPort() + 1);
+				WiredTransferClient client = new WiredTransferClient(socket.getOutputStream());
+				client.identifyTransfer(wiredTransferId);
+				OutputStream outgoing = socket.getOutputStream();
+				outgoing.write(checksumBuf);
+				length -= checksumSize;
+				if (length > 0) {
+					byte[] buf = new byte[64 * 1024];
+					while (length > 0) {
+						int n = (length > buf.length ? buf.length : length);
+						int nread = in.read(buf, 0, n);
+						if (nread <= 0) {
+							break;
+						}
+						outgoing.write(buf, 0, nread);
+						length -= nread;
+					}
+				}
+				outgoing.flush();
+				outgoing.close();
+			} else if (tag.equals("MACR")) {
+				in.readInt();
+				in.readInt();
+				int length = in.readInt();
+				byte[] buf = new byte[64 * 1024];
+				while (length > 0) {
+					int n = (length > buf.length ? buf.length : length);
+					int nread = in.read(buf, 0, n);
+					if (nread <= 0) {
+						break;
+					}
+					// discard!
+					// out.write(buf, 0, nread);
+					length -= nread;
+				}
+			} else {
+				// unknown
+			}
+		}
+	}
+
+	private void sendFileToHotline(FileTransfer transfer) throws Exception {
+		SSLSocket socket = openWiredSocket(config.getHost(), config.getPort() + 1);
+		WiredTransferClient client = new WiredTransferClient(socket.getOutputStream());
+		client.identifyTransfer(transfer.getWiredTransferId());
+		out.write("FILP".getBytes());
+		out.writeShort(1);
+		out.writeShort(0);
+		out.writeInt(0);
+		out.writeInt(0);
+		out.writeInt(0);
+		out.writeInt(3);
+		out.write("INFO".getBytes());
+		out.writeInt(0);
+		out.writeInt(0);
+		byte[] filename = MacRoman.fromString(transfer.getFileInfo().getName());
+		byte[] comment = new byte[0]; // todo
+		out.writeInt(74 + filename.length + comment.length);
+		out.write("AMAC".getBytes());
+		out.write("TEXT".getBytes());
+		out.write("ttxt".getBytes());
+		out.writeInt(0);
+		out.writeInt(256);
+		out.writeInt(0);
+		out.writeInt(0);
+		out.writeInt(0);
+		out.writeInt(0);
+		out.writeInt(0);
+		out.writeInt(0);
+		out.writeInt(0);
+		out.writeInt(0);
+		out.write(HotlineUtils.pack("D", transfer.getFileInfo().getCreationDate()));
+		out.write(HotlineUtils.pack("D", transfer.getFileInfo().getModificationDate()));
+		out.writeShort(0);
+		out.writeShort(filename.length);
+		out.write(filename);
+		out.writeShort(comment.length);
+		out.write(comment);
+		out.write("DATA".getBytes());
+		out.writeInt(0);
+		out.writeInt(0);
+		out.writeInt((int)transfer.getFileInfo().getSize());
+		InputStream incoming = socket.getInputStream();
+		byte[] buf = new byte[64 * 1024];
+		int length = in.read(buf);
+		while (length > 0) {
+			out.write(buf, 0, length);
+			length = incoming.read(buf);
+		}
+		out.write("MACR".getBytes());
+		out.writeInt(0);
+		out.writeInt(0);
+		out.flush();
+		out.close();
+	}
 
 	private boolean performHandshake() {
 		byte[] handshake = new byte[4];
@@ -56,64 +192,17 @@ public class HotWiredFileBridge {
 			int value = in.readInt();
 			in.readInt();
 			if (value == 0) {
+				System.err.println("a download!");
 				FileTransfer transfer = fileTransferMap.getTransferByHotlineId(hotlineTransferId);
-				SSLSocket socket = openWiredSocket(config.getHost(), config.getPort() + 1);
-				WiredTransferClient client = new WiredTransferClient(socket.getOutputStream());
-				client.identifyTransfer(transfer.getWiredTransferId());
-				out.write("FILP".getBytes());
-				out.writeShort(1);
-				out.writeShort(0);
-				out.writeInt(0);
-				out.writeInt(0);
-				out.writeInt(0);
-				out.writeInt(3);
-				out.write("INFO".getBytes());
-				out.writeInt(0);
-				out.writeInt(0);
-				byte[] filename = MacRoman.fromString(transfer.getFileInfo().getName());
-				byte[] comment = new byte[0]; // todo
-				out.writeInt(74 + filename.length + comment.length);
-				out.write("AMAC".getBytes());
-				out.write("TEXT".getBytes());
-				out.write("ttxt".getBytes());
-				out.writeInt(0);
-				out.writeInt(256);
-				out.writeInt(0);
-				out.writeInt(0);
-				out.writeInt(0);
-				out.writeInt(0);
-				out.writeInt(0);
-				out.writeInt(0);
-				out.writeInt(0);
-				out.writeInt(0);
-				out.write(HotlineUtils.pack("D", transfer.getFileInfo().getCreationDate()));
-				out.write(HotlineUtils.pack("D", transfer.getFileInfo().getModificationDate()));
-				out.writeShort(0);
-				out.writeShort(filename.length);
-				out.write(filename);
-				out.writeShort(comment.length);
-				out.write(comment);
-				out.write("DATA".getBytes());
-				out.writeInt(0);
-				out.writeInt(0);
-				out.writeInt((int)transfer.getFileInfo().getSize());
-				InputStream incoming = socket.getInputStream();
-				byte[] buf = new byte[64 * 1024];
-				int length = incoming.read(buf);
-				while (length > 0) {
-					out.write(buf, 0, length);
-					length = incoming.read(buf);
-				}
-				out.write("MACR".getBytes());
-				out.writeInt(0);
-				out.writeInt(0);
-				out.flush();
-				out.close();
+				sendFileToHotline(transfer);
 				// client wants to download file
 				// validate
 				// connect_to_wired
 				// send_it
 			} else {
+				System.err.println("upload of size " + value);
+				FileTransfer transfer = fileTransferMap.getTransferByHotlineId(hotlineTransferId);
+				receiveFileFromHotline(transfer);
 				// client is uploading file of size value
 				// validate
 				// connect_to_wired

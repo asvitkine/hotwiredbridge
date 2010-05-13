@@ -7,14 +7,20 @@ public class FileTransfer {
 	private String wiredTransferId;
 	private FileInfo fileInfo;
 	private boolean upload;
+	private HotWiredBridge hotWiredBridge;
 
-	public FileTransfer(int hotlineTransferId, String wiredTransferId, FileInfo fileInfo, boolean upload) {
+	public FileTransfer(HotWiredBridge hotWiredBridge, int hotlineTransferId, String wiredTransferId,
+			FileInfo fileInfo, boolean upload) {
+		this.hotWiredBridge = hotWiredBridge;
 		this.hotlineTransferId = hotlineTransferId;
 		this.wiredTransferId = wiredTransferId;
 		this.fileInfo = fileInfo;
 		this.upload = upload;
 	}
 
+	public HotWiredBridge getHotWiredBridge() {
+		return hotWiredBridge;
+	}
 	public int getHotlineTransferId() {
 		return hotlineTransferId;
 	}

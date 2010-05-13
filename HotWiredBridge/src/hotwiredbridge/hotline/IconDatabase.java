@@ -1,6 +1,6 @@
 package hotwiredbridge.hotline;
 
-import hotwiredbridge.wired.WiredClient;
+import hotwiredbridge.wired.WiredUtils;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -36,7 +36,7 @@ public class IconDatabase {
 				ByteArrayOutputStream out = new ByteArrayOutputStream();
 				ImageIO.write(icon, "png", out);
 				Integer iconIndex = new Integer(r.getID());
-				String iconString = WiredClient.bytesToBase64(out.toByteArray()); 
+				String iconString = WiredUtils.bytesToBase64(out.toByteArray()); 
 				iconStrings.put(iconIndex, iconString);
 				stringIcons.put(iconString, iconIndex);
 				iconsLoaded++;

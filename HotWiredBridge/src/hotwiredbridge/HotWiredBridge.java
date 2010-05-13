@@ -34,7 +34,11 @@ public class HotWiredBridge implements WiredEventHandler {
 		this.in = new DataInputStream(in);
 		this.out = new DataOutputStream(out);
 	}
-	
+
+	public WiredClient getWiredClient() {
+		return client;
+	}
+
 	public void run() {
 		if (!performHandshake()) {
 			close();
@@ -266,6 +270,22 @@ public class HotWiredBridge implements WiredEventHandler {
 			break;
 		}
 		case Transaction.ID_UPLOAD: {
+			String path = convertPath(t.getObjectData(TransactionObject.PATH));
+			path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
+			FileInfo fileInfo = new FileInfo();
+			fileInfo.setType(FileInfo.TYPE_FILE);
+			fileInfo.setPath(path);
+			int hotlineTransferId = fileTransferMap.createUploadTransfer(this, fileInfo).getHotlineTransferId();
+			t.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
+			// Reply to hotline client to start the upload. When we receive {filesize,data of length min(1MB,filesize)},
+			// then we can tell the wired server that we wish to upload. This will be done in the file bridge.
+			Transaction reply = factory.createReply(t);
+			reply.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
+			queue.offer(reply);
+			// NOTE: Not removing t from pendingTransactions yet!
+			synchronized (pendingTransactions) {
+				pendingTransactions.add(t);
+			}
 			break;
 		}
 		case Transaction.ID_CREATE_PCHAT:
@@ -557,8 +577,7 @@ public class HotWiredBridge implements WiredEventHandler {
 			synchronized (pendingTransactions) {
 				for (Transaction t : pendingTransactions) {
 					if (t.getId() == Transaction.ID_GETFILEINFO ||
-						t.getId() == Transaction.ID_DOWNLOAD ||
-						t.getId() == Transaction.ID_UPLOAD)
+						t.getId() == Transaction.ID_DOWNLOAD)
 					{
 						String path = convertPath(t.getObjectData(TransactionObject.PATH));
 						path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
@@ -578,14 +597,10 @@ public class HotWiredBridge implements WiredEventHandler {
 								}
 								queue.offer(reply);
 								pendingTransactions.remove(t);
-							} else {
-								/* TODO: Handle uploads and resumes. */
-								int hotlineTransferId;
+							} else if (t.getId() == Transaction.ID_DOWNLOAD) {
+								/* TODO: Handle resumes. */
 								String wiredTransferId = new String(t.getObjectData(TransactionObject.TRANSFER_ID));
-								if (t.getId() == Transaction.ID_DOWNLOAD)
-									hotlineTransferId = fileTransferMap.createDownloadTransfer(wiredTransferId, fileInfo).getHotlineTransferId();
-								else
-									hotlineTransferId = fileTransferMap.createDownloadTransfer(wiredTransferId, fileInfo).getHotlineTransferId();
+								int hotlineTransferId = fileTransferMap.createDownloadTransfer(this, wiredTransferId, fileInfo).getHotlineTransferId();
 								Transaction reply = factory.createReply(t);
 								reply.addObject(TransactionObject.TRANSFER_SIZE, HotlineUtils.pack("N", fileInfo.getSize()));
 								reply.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
@@ -634,8 +649,15 @@ public class HotWiredBridge implements WiredEventHandler {
 						String path = convertPath(t.getObjectData(TransactionObject.PATH));
 						path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
 						if (path.equals(transferReadyEvent.getPath())) {
-							t.addObject(TransactionObject.TRANSFER_ID, transferReadyEvent.getHash().getBytes());
-							try{client.requestFileInfo(path);}catch (Exception e){e.printStackTrace();}
+							if (t.getId() == Transaction.ID_DOWNLOAD) {
+								t.addObject(TransactionObject.TRANSFER_ID, transferReadyEvent.getHash().getBytes());
+								try { client.requestFileInfo(path); } catch (Exception e) { e.printStackTrace(); }
+							} else { // (t.getId() == Transaction.ID_UPLOAD)
+								int hotlineTransferId = t.getObjectDataAsInt(TransactionObject.TRANSFER_ID);
+								FileTransfer transfer = fileTransferMap.getTransferByHotlineId(hotlineTransferId);
+								fileTransferMap.setWiredTransferIdForUploadTransfer(transfer, transferReadyEvent.getHash());
+								pendingTransactions.remove(t);
+							}
 							break;
 						}
 					}
