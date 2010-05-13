@@ -1,6 +1,6 @@
 package hotwiredbridge.hotline;
 
-import hotwiredbridge.wired.WiredClient;
+import hotwiredbridge.wired.WiredUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -94,7 +94,7 @@ public class Transaction {
 	public String toString() {
 		String s = String.format("%d %d %d with %d objecs:\n", type, id, taskNumber, objects.size());
 		for (TransactionObject o : objects) {
-			s += "  obj(" + o.id +") -> " + (o.data == null ? "(null)" : WiredClient.bytesToHex(o.data)) + " \n";
+			s += "  obj(" + o.id +") -> " + (o.data == null ? "(null)" : WiredUtils.bytesToHex(o.data)) + " \n";
 		}
 		return s;
 	}

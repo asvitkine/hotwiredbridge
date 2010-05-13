@@ -7,6 +7,8 @@ import java.net.*;
 
 public class ServerApp {
 	public static void main(String[] args) throws IOException {
+		System.setProperty("java.awt.headless", "true"); 
+
 		final WiredServerConfig config = new WiredServerConfig("localhost", 2000);
 
 		System.out.println("INFO: Starting server...");
