@@ -41,7 +41,8 @@ public class HotWiredFileBridge {
 			return;
 		}
 	}
-	
+
+	// TODO: Use this!
 	private static String readString(DataInputStream in) throws IOException {
 		int length = in.readUnsignedShort();
 		byte[] data = new byte[length];
@@ -58,7 +59,7 @@ public class HotWiredFileBridge {
 	private void receiveFileFromHotline(FileTransfer transfer) throws Exception {
 		while (in.available() > 0) {
 			String tag = readTag(in);
-			if (tag.equals("FILP")) {
+			if (tag.equals("FILP")) {				
 				byte[] header = new byte[20];
 				in.readFully(header);
 			} else if (tag.equals("INFO")) {
@@ -101,6 +102,7 @@ public class HotWiredFileBridge {
 				}
 				outgoing.flush();
 				outgoing.close();
+				socket.close();
 			} else if (tag.equals("MACR")) {
 				in.readInt();
 				in.readInt();
@@ -120,6 +122,7 @@ public class HotWiredFileBridge {
 				// unknown
 			}
 		}
+		
 	}
 
 	private void sendFileToHotline(FileTransfer transfer) throws Exception {
@@ -165,7 +168,7 @@ public class HotWiredFileBridge {
 		out.writeInt((int)transfer.getFileInfo().getSize());
 		InputStream incoming = socket.getInputStream();
 		byte[] buf = new byte[64 * 1024];
-		int length = in.read(buf);
+		int length = incoming.read(buf);
 		while (length > 0) {
 			out.write(buf, 0, length);
 			length = incoming.read(buf);
@@ -185,29 +188,18 @@ public class HotWiredFileBridge {
 				return false;
 			}
 			int hotlineTransferId = in.readInt();
-			System.out.println("request for " + hotlineTransferId);
-			// note: wired issues a textual key string
-			// so we need to keep a map somewhere
-			// between the two
 			int value = in.readInt();
 			in.readInt();
 			if (value == 0) {
-				System.err.println("a download!");
 				FileTransfer transfer = fileTransferMap.getTransferByHotlineId(hotlineTransferId);
 				sendFileToHotline(transfer);
-				// client wants to download file
-				// validate
-				// connect_to_wired
-				// send_it
 			} else {
-				System.err.println("upload of size " + value);
 				FileTransfer transfer = fileTransferMap.getTransferByHotlineId(hotlineTransferId);
 				receiveFileFromHotline(transfer);
-				// client is uploading file of size value
-				// validate
-				// connect_to_wired
-				// get_it
 			}
+			in.close();
+			out.flush();
+			out.close();
 		} catch (IOException e) {
 			return false;
 		} catch (Exception e) {

@@ -47,11 +47,8 @@ public class FileTransferMap {
 
 	public FileTransfer waitForWiredTransferIdForUploadTransfer(FileTransfer transfer) throws InterruptedException {
 		if (!transfer.isUpload()) {
-			System.err.println("Not an upload!");
 			return null;
 		}
-		// want to avoid situation
-		// where we
 		synchronized(transfer) {
 			do {
 				FileTransfer newFileTransfer;

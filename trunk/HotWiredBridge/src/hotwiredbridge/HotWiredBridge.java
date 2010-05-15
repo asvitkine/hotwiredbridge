@@ -261,7 +261,6 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_DOWNLOAD: {
 			String path = convertPath(t.getObjectData(TransactionObject.PATH));
 			path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
-			System.err.println(path);
 			/* TODO: Resume info. */
 			client.getFile(path, 0);
 			synchronized (pendingTransactions) {
@@ -277,15 +276,16 @@ public class HotWiredBridge implements WiredEventHandler {
 			fileInfo.setPath(path);
 			int hotlineTransferId = fileTransferMap.createUploadTransfer(this, fileInfo).getHotlineTransferId();
 			t.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
+			// NOTE: Not removing t from pendingTransactions yet!
+			synchronized (pendingTransactions) {
+				pendingTransactions.add(t);
+			}
 			// Reply to hotline client to start the upload. When we receive {filesize,data of length min(1MB,filesize)},
 			// then we can tell the wired server that we wish to upload. This will be done in the file bridge.
 			Transaction reply = factory.createReply(t);
 			reply.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
 			queue.offer(reply);
-			// NOTE: Not removing t from pendingTransactions yet!
-			synchronized (pendingTransactions) {
-				pendingTransactions.add(t);
-			}
+
 			break;
 		}
 		case Transaction.ID_CREATE_PCHAT:
@@ -654,9 +654,9 @@ public class HotWiredBridge implements WiredEventHandler {
 								try { client.requestFileInfo(path); } catch (Exception e) { e.printStackTrace(); }
 							} else { // (t.getId() == Transaction.ID_UPLOAD)
 								int hotlineTransferId = t.getObjectDataAsInt(TransactionObject.TRANSFER_ID);
+								pendingTransactions.remove(t);
 								FileTransfer transfer = fileTransferMap.getTransferByHotlineId(hotlineTransferId);
 								fileTransferMap.setWiredTransferIdForUploadTransfer(transfer, transferReadyEvent.getHash());
-								pendingTransactions.remove(t);
 							}
 							break;
 						}
