@@ -2,8 +2,8 @@ package hotwiredbridge;
 
 import hotwiredbridge.hotline.HotlineUtils;
 import hotwiredbridge.hotline.MacRoman;
-import hotwiredbridge.wired.WiredTransferClient;
-import hotwiredbridge.wired.WiredUtils;
+import wired.WiredTransferClient;
+import wired.WiredUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

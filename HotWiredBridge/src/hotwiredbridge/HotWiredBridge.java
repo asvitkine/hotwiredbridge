@@ -1,7 +1,8 @@
 package hotwiredbridge;
 
 import hotwiredbridge.hotline.*;
-import hotwiredbridge.wired.*;
+import wired.*;
+import wired.event.*;
 
 import java.security.*;
 import java.util.*;

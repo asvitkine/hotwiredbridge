@@ -1,6 +1,6 @@
 package hotwiredbridge;
 
-import hotwiredbridge.wired.FileInfo;
+import wired.event.FileInfo;
 
 import java.util.Map;
 import java.util.HashMap;

@@ -1,6 +1,6 @@
 package hotwiredbridge;
 
-import hotwiredbridge.wired.FileInfo;
+import wired.event.FileInfo;
 
 public class FileTransfer {
 	private int hotlineTransferId;

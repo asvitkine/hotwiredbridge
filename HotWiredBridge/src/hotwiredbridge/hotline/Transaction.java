@@ -1,6 +1,6 @@
 package hotwiredbridge.hotline;
 
-import hotwiredbridge.wired.WiredUtils;
+import wired.WiredUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
