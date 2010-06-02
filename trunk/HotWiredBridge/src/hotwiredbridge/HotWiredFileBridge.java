@@ -22,14 +22,17 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class HotWiredFileBridge {
 	private WiredServerConfig config;
+	private FileTypeAndCreatorMap fileTypeAndCreatorMap;
 	private FileTransferMap fileTransferMap;
 	private DataInputStream in;
 	private DataOutputStream out;
 
 	private boolean closed;
 
-	public HotWiredFileBridge(WiredServerConfig config, FileTransferMap fileTransferMap, InputStream in, OutputStream out) {
+	public HotWiredFileBridge(WiredServerConfig config, FileTypeAndCreatorMap fileTypeAndCreatorMap,
+			FileTransferMap fileTransferMap, InputStream in, OutputStream out) {
 		this.config = config;
+		this.fileTypeAndCreatorMap = fileTypeAndCreatorMap;
 		this.fileTransferMap = fileTransferMap;
 		this.in = new DataInputStream(in);
 		this.out = new DataOutputStream(out);
@@ -143,8 +146,9 @@ public class HotWiredFileBridge {
 		byte[] comment = new byte[0]; // todo
 		out.writeInt(74 + filename.length + comment.length);
 		out.write("AMAC".getBytes());
-		out.write("TEXT".getBytes());
-		out.write("ttxt".getBytes());
+		String[] codes = fileTypeAndCreatorMap.getCodesFor(transfer.getFileInfo().getName());
+		out.write(codes[FileTypeAndCreatorMap.TYPE].getBytes());
+		out.write(codes[FileTypeAndCreatorMap.CREATOR].getBytes());
 		out.writeInt(0);
 		out.writeInt(256);
 		out.writeInt(0);

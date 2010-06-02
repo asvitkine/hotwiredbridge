@@ -21,6 +21,14 @@ public class ServerApp {
 			e.printStackTrace();
 		}
 
+		final FileTypeAndCreatorMap fileTypeAndCreatorMap = new FileTypeAndCreatorMap();
+		try {
+			System.out.println("INFO: Loading type and creator codes database...");
+			fileTypeAndCreatorMap.loadFromAppleVolumesFile(new File("/Users/shadowknight/Projects/hotwiredbridge/AppleVolumes.system"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
 		final FileTransferMap fileTransferMap = new FileTransferMap();
 
 		int port = 4000;
@@ -36,7 +44,7 @@ public class ServerApp {
 		new Thread() {
 			public void run() {
 				try {
-					runFileBridgeServer(config, fileTransferMap, fileBridgePort);
+					runFileBridgeServer(config, fileTypeAndCreatorMap, fileTransferMap, fileBridgePort);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -52,7 +60,7 @@ public class ServerApp {
 					try {
 						InputStream in = socket.getInputStream();
 						OutputStream out = socket.getOutputStream();
-						HotWiredBridge bridge = new HotWiredBridge(config, iconDB, fileTransferMap, in, out);
+						HotWiredBridge bridge = new HotWiredBridge(config, iconDB, fileTypeAndCreatorMap, fileTransferMap, in, out);
 						bridge.run();
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -62,7 +70,7 @@ public class ServerApp {
 		}
 	}
 
-	private static void runFileBridgeServer(final WiredServerConfig config, final FileTransferMap fileTransferMap, int port) throws IOException {
+	private static void runFileBridgeServer(final WiredServerConfig config, final FileTypeAndCreatorMap fileTypeAndCreatorMap, final FileTransferMap fileTransferMap, int port) throws IOException {
 		ServerSocket serverSocket = new ServerSocket(port);
 		try {
 			InetAddress address = InetAddress.getLocalHost();
@@ -80,7 +88,7 @@ public class ServerApp {
 					try {
 						InputStream in = socket.getInputStream();
 						OutputStream out = socket.getOutputStream();
-						HotWiredFileBridge bridge = new HotWiredFileBridge(config, fileTransferMap, in, out);
+						HotWiredFileBridge bridge = new HotWiredFileBridge(config, fileTypeAndCreatorMap, fileTransferMap, in, out);
 						bridge.run();
 					} catch (Exception e) {
 						e.printStackTrace();
