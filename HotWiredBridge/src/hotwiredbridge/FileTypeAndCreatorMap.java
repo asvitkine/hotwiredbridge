@@ -20,12 +20,15 @@ public class FileTypeAndCreatorMap {
 
 	public String[] getCodesFor(String filename) {
 		int index = filename.lastIndexOf('.');
+		String ext;
 		if (index != -1) {
-			String ext = filename.substring(index + 1);
-			String[] codes = map.get(ext);
-			if (codes != null) {
-				return new String[] {codes[0], codes[1]};
-			}
+			ext = filename.substring(index + 1);
+		} else {
+			ext = "";
+		}
+		String[] codes = map.get(ext);
+		if (codes != null) {
+			return new String[] {codes[0], codes[1]};
 		}
 		return new String[] {"????", "????"};
 	}
@@ -40,7 +43,7 @@ public class FileTypeAndCreatorMap {
 				String ext = ss.readNext();
 				String type = ss.readNext();
 				String creator = ss.readNext();
-				map.put(ext, new String[] {type, creator});
+				map.put(ext.substring(1), new String[] {type, creator});
 			}
 			line = in.readLine();
 		}
@@ -60,13 +63,13 @@ public class FileTypeAndCreatorMap {
 				index++;
 			}
 		}
-		
+
 		private void skipUntil(char c) {
 			while (index < string.length() && string.charAt(index) != c) {
 				index++;
 			}
 		}
-		
+
 		public String readNext() {
 			if (index == string.length()) {
 				return null;
