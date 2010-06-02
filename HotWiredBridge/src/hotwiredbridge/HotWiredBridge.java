@@ -14,6 +14,7 @@ import javax.net.ssl.*;
 public class HotWiredBridge implements WiredEventHandler {
 	private WiredServerConfig config;
 	private IconDatabase iconDB;
+	private FileTypeAndCreatorMap fileTypeAndCreatorMap;
 	private FileTransferMap fileTransferMap;
 	private DataInputStream in;
 	private DataOutputStream out;
@@ -28,9 +29,11 @@ public class HotWiredBridge implements WiredEventHandler {
 	private boolean closed;
 
 	public HotWiredBridge(WiredServerConfig config, IconDatabase iconDB,
-			FileTransferMap fileTransferMap, InputStream in, OutputStream out) {
+			FileTypeAndCreatorMap fileTypeAndCreatorMap, FileTransferMap fileTransferMap,
+			InputStream in, OutputStream out) {
 		this.config = config;
 		this.iconDB = iconDB;
+		this.fileTypeAndCreatorMap = fileTypeAndCreatorMap;
 		this.fileTransferMap = fileTransferMap;
 		this.in = new DataInputStream(in);
 		this.out = new DataOutputStream(out);
@@ -587,8 +590,9 @@ public class HotWiredBridge implements WiredEventHandler {
 							if (t.getId() == Transaction.ID_GETFILEINFO) {
 								Transaction reply = factory.createReply(t);
 								reply.addObject(TransactionObject.FILETYPE, fileInfo.isDirectory() ? "fldr".getBytes() : "????".getBytes());
-								reply.addObject(TransactionObject.FILETYPESTR, "????".getBytes());
-								reply.addObject(TransactionObject.FILECREATORSTR, "????".getBytes());
+								String[] codes = fileTypeAndCreatorMap.getCodesFor(fileInfo.getName());
+								reply.addObject(TransactionObject.FILETYPESTR, codes[FileTypeAndCreatorMap.TYPE].getBytes());
+								reply.addObject(TransactionObject.FILECREATORSTR, codes[FileTypeAndCreatorMap.CREATOR].getBytes());
 								reply.addObject(TransactionObject.FILENAME, MacRoman.fromString(fileInfo.getName()));
 								reply.addObject(TransactionObject.FILECREATED, HotlineUtils.pack("D", fileInfo.getCreationDate()));
 								reply.addObject(TransactionObject.FILEMODIFIED, HotlineUtils.pack("D", fileInfo.getModificationDate()));
