@@ -47,6 +47,8 @@ public class FileTypeAndCreatorMap {
 			}
 			line = in.readLine();
 		}
+
+		System.out.printf("INFO: %d mappings loaded.\n", map.size());
 	}
 
 	public static class SimpleScanner {
