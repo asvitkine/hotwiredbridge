@@ -50,8 +50,9 @@ public class HotWiredBridge implements WiredEventHandler {
 		}
 
 		try {
-			client = createClientFor(config.getHost(), config.getPort());			
+			client = createClientFor(config.getHost(), config.getPort());	
 		} catch (Exception e) {
+			System.out.println("ERROR: Could not establish Wired connection : " + e.getMessage());
 			close();
 			return;
 		}
@@ -104,6 +105,8 @@ public class HotWiredBridge implements WiredEventHandler {
 	
 	private synchronized void close() {
 		if (!closed) {
+			System.out.println("INFO: Disconnecting client.");
+
 			if (wiredSocket != null) {
 				try { wiredSocket.close(); } catch (Exception e) {}
 				wiredSocket = null;
@@ -590,7 +593,8 @@ public class HotWiredBridge implements WiredEventHandler {
 							if (t.getId() == Transaction.ID_GETFILEINFO) {
 								Transaction reply = factory.createReply(t);
 								reply.addObject(TransactionObject.FILETYPE, fileInfo.isDirectory() ? "fldr".getBytes() : "????".getBytes());
-								String[] codes = fileTypeAndCreatorMap.getCodesFor(fileInfo.getName());
+								String[] codes = fileInfo.isDirectory() ? new String[] {"fldr", "\0\0\0\0"} :
+										fileTypeAndCreatorMap.getCodesFor(fileInfo.getName());
 								reply.addObject(TransactionObject.FILETYPESTR, codes[FileTypeAndCreatorMap.TYPE].getBytes());
 								reply.addObject(TransactionObject.FILECREATORSTR, codes[FileTypeAndCreatorMap.CREATOR].getBytes());
 								reply.addObject(TransactionObject.FILENAME, MacRoman.fromString(fileInfo.getName()));

@@ -82,7 +82,8 @@ public class FileTypeAndCreatorMap {
 			if (string.charAt(index) == '"') {
 				index++;
 				skipUntil('"');
-				result = string.substring(start + 1, index - 1);
+				result = string.substring(start + 1, index);
+				index++;
 			} else {
 				skipUntil(' ');
 				result = string.substring(start, index);				
