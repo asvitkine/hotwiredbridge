@@ -53,4 +53,10 @@ public class HotlineUtils {
 		}
 		return objects.toArray();
 	}
+
+	public static String readTag(DataInputStream in) throws IOException {
+		byte[] tag = new byte[4];
+		in.readFully(tag);
+		return new String(tag);
+	}
 }

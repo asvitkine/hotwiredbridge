@@ -243,8 +243,7 @@ public class HotWiredBridge implements WiredEventHandler {
 			break;
 		}
 		case Transaction.ID_CREATEFOLDER: {
-			String path = convertPath(t.getObjectData(TransactionObject.PATH));
-			path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
+			String path = getFilePathFromTransaction(t);
 			client.createFolder(path);
 			break;
 		}
@@ -257,8 +256,7 @@ public class HotWiredBridge implements WiredEventHandler {
 			break;
 		}
 		case Transaction.ID_GETFILEINFO: {
-			String path = convertPath(t.getObjectData(TransactionObject.PATH));
-			path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
+			String path = getFilePathFromTransaction(t);
 			client.requestFileInfo(path);
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
@@ -266,33 +264,62 @@ public class HotWiredBridge implements WiredEventHandler {
 			break;
 		}
 		case Transaction.ID_DOWNLOAD: {
-			String path = convertPath(t.getObjectData(TransactionObject.PATH));
-			path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
-			/* TODO: Resume info. */
-			client.getFile(path, 0);
+			String path = getFilePathFromTransaction(t);
+			int resumeOffset = getResumeDataOffset(t.getObjectData(TransactionObject.RESUMEINFO));
+			client.getFile(path, resumeOffset);
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
 			break;
 		}
 		case Transaction.ID_UPLOAD: {
-			String path = convertPath(t.getObjectData(TransactionObject.PATH));
-			path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
+			String path = getFilePathFromTransaction(t);
 			FileInfo fileInfo = new FileInfo();
 			fileInfo.setType(FileInfo.TYPE_FILE);
 			fileInfo.setPath(path);
-			int hotlineTransferId = fileTransferMap.createUploadTransfer(this, fileInfo).getHotlineTransferId();
-			t.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
+
+			boolean isResume = isResumeUploadTransaction(t);
+			if (!isResume) {
+				int hotlineTransferId = fileTransferMap.createUploadTransfer(this, fileInfo, null).getHotlineTransferId();
+				t.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
+			}
+
 			// NOTE: Not removing t from pendingTransactions yet!
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
-			// Reply to hotline client to start the upload. When we receive {filesize,data of length min(1MB,filesize)},
-			// then we can tell the wired server that we wish to upload. This will be done in the file bridge.
-			Transaction reply = factory.createReply(t);
-			reply.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
-			queue.offer(reply);
 
+			if (isResume) {
+				// We can't get the checksum if it's a resume. So we issue a Wired STAT command on
+				// the existing file to get its checksum. Once we have the checksum, we can proceed
+				// with the upload.
+				client.requestFileInfo(path);
+			} else {
+				// Reply to the Hotline client to start the upload. When we receive {filesize,data[min(1MB,filesize)]},
+				// then we can tell the wired server that we wish to upload. This will be done in the file bridge.
+				Transaction reply = factory.createReply(t);
+				reply.addObject(TransactionObject.TRANSFER_ID, t.getObjectData(TransactionObject.TRANSFER_ID));
+				queue.offer(reply);
+			}
+			break;
+		}
+		case Transaction.ID_DELETE: {
+			String path = getFilePathFromTransaction(t);
+			client.deleteFile(path);
+			break;
+		}
+		case Transaction.ID_SETFILEINFO: {
+			String path = getFilePathFromTransaction(t);
+			String comment = MacRoman.toString(t.getObjectData(TransactionObject.COMMENT));
+			if (comment != null) {
+				client.setFileComment(path, comment);
+			}
+			String newFilename = MacRoman.toString(t.getObjectData(TransactionObject.NEWFILENAME));
+			if (newFilename != null) {
+				String newPath = convertPath(t.getObjectData(TransactionObject.PATH));
+				newPath += "/" + newFilename;
+				client.moveFile(path, newPath);
+			}
 			break;
 		}
 		case Transaction.ID_CREATE_PCHAT:
@@ -331,7 +358,47 @@ public class HotWiredBridge implements WiredEventHandler {
 			queue.offer(t);
 		}
 	}
+	
+	private String getFilePathFromTransaction(Transaction t) {
+		String path = convertPath(t.getObjectData(TransactionObject.PATH));
+		path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
+		return path;
+	}
+	
+	private boolean isResumeUploadTransaction(Transaction t) {
+		boolean isResume = false;
+		byte[] resumeData = t.getObjectData(TransactionObject.RESUMEFLAG);
+		if (resumeData != null) {
+			for (byte b : resumeData) {
+				if (b != 0) {
+					isResume = true;
+					break;
+				}
+			}
+		}
+		return isResume;
+	}
 
+	private int getResumeDataOffset(byte[] resumeInfo) throws IOException {
+		int resumeOffset = 0;
+		if (resumeInfo != null) {
+			DataInputStream in = new DataInputStream(new ByteArrayInputStream(resumeInfo));
+			while (in.available() > 0) {
+				String tag = HotlineUtils.readTag(in);
+				if (tag.equals("RFLT")) {
+					in.skip(39);
+				} else if (tag.equals("DATA")) {
+					resumeOffset = in.readInt();
+					in.skip(8);
+				} else if (tag.equals("MACR")) {
+					in.readInt(); // rsrcOffset
+					in.skip(8);
+				}
+			}
+		}
+		return resumeOffset;
+	}
+	
 	private static String convertPath(byte[] data) {
 		if (data == null)
 			return "";
@@ -584,7 +651,8 @@ public class HotWiredBridge implements WiredEventHandler {
 			synchronized (pendingTransactions) {
 				for (Transaction t : pendingTransactions) {
 					if (t.getId() == Transaction.ID_GETFILEINFO ||
-						t.getId() == Transaction.ID_DOWNLOAD)
+						t.getId() == Transaction.ID_DOWNLOAD ||
+						(t.getId() == Transaction.ID_UPLOAD && isResumeUploadTransaction(t)))
 					{
 						String path = convertPath(t.getObjectData(TransactionObject.PATH));
 						path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
@@ -607,14 +675,35 @@ public class HotWiredBridge implements WiredEventHandler {
 								queue.offer(reply);
 								pendingTransactions.remove(t);
 							} else if (t.getId() == Transaction.ID_DOWNLOAD) {
-								/* TODO: Handle resumes. */
-								String wiredTransferId = new String(t.getObjectData(TransactionObject.TRANSFER_ID));
-								int hotlineTransferId = fileTransferMap.createDownloadTransfer(this, wiredTransferId, fileInfo).getHotlineTransferId();
+								byte[] wiredTransferId = t.getObjectData(TransactionObject.TRANSFER_ID);
+								if (wiredTransferId != null) {
+									int resumeOffset = 0;
+									try {
+										resumeOffset = getResumeDataOffset(t.getObjectData(TransactionObject.RESUMEINFO));
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+									int hotlineTransferId = fileTransferMap.createDownloadTransfer(this,
+										new String(wiredTransferId), fileInfo, resumeOffset).getHotlineTransferId();
+									Transaction reply = factory.createReply(t);
+									reply.addObject(TransactionObject.TRANSFER_SIZE,
+										HotlineUtils.pack("N", fileInfo.getSize() - resumeOffset));
+									reply.addObject(TransactionObject.TRANSFER_ID,
+										HotlineUtils.pack("N", hotlineTransferId));
+									queue.offer(reply);
+									pendingTransactions.remove(t);
+								}
+							} else { // t.getId() == Transaction.ID_UPLOAD && isResumeUploadTransaction(t)
+								System.err.println("GOT FILEINFO for PARTIAL UPLOAD ... checksum -> " + fileInfoEvent.getChecksum());
+								// We issued a file info request to get the checksum for the upload resumption.
+								int hotlineTransferId = fileTransferMap.createUploadTransfer(this, fileInfo, fileInfoEvent.getChecksum()).getHotlineTransferId();
+								t.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
+
+								// Reply to the Hotline client to start the partial upload. We already have the checksum, so no need
+								// to wait for the first 1MB of the file.
 								Transaction reply = factory.createReply(t);
-								reply.addObject(TransactionObject.TRANSFER_SIZE, HotlineUtils.pack("N", fileInfo.getSize()));
 								reply.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
 								queue.offer(reply);
-								pendingTransactions.remove(t);
 							}
 							break;
 						}

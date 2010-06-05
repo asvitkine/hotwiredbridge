@@ -16,15 +16,15 @@ public class FileTransferMap {
 		nextHotlineTransferId = 1;
 	}
 
-	public synchronized FileTransfer createDownloadTransfer(HotWiredBridge hotWiredBridge, String wiredTransferId, FileInfo fileInfo) {
-		FileTransfer fileTransfer = new FileTransfer(hotWiredBridge, nextHotlineTransferId++, wiredTransferId, fileInfo, false);
+	public synchronized FileTransfer createDownloadTransfer(HotWiredBridge hotWiredBridge, String wiredTransferId, FileInfo fileInfo, long fileOffset) {
+		FileTransfer fileTransfer = new FileTransfer(hotWiredBridge, nextHotlineTransferId++, wiredTransferId, fileInfo, fileOffset, false, null);
 		wMap.put(wiredTransferId, fileTransfer);
 		hMap.put(fileTransfer.getHotlineTransferId(), fileTransfer);
 		return fileTransfer;
 	}
 
-	public synchronized FileTransfer createUploadTransfer(HotWiredBridge hotWiredBridge, FileInfo fileInfo) {
-		FileTransfer fileTransfer = new FileTransfer(hotWiredBridge, nextHotlineTransferId++, null, fileInfo, true);
+	public synchronized FileTransfer createUploadTransfer(HotWiredBridge hotWiredBridge, FileInfo fileInfo, String checksum) {
+		FileTransfer fileTransfer = new FileTransfer(hotWiredBridge, nextHotlineTransferId++, null, fileInfo, (checksum != null ? -1 : 0), true, checksum);
 		hMap.put(fileTransfer.getHotlineTransferId(), fileTransfer);
 		return fileTransfer;
 	}
@@ -34,8 +34,8 @@ public class FileTransferMap {
 			return null;
 		FileTransfer newFileTransfer;
 		synchronized(this) {
-			newFileTransfer = new FileTransfer(transfer.getHotWiredBridge(),transfer.getHotlineTransferId(),
-				wiredTransferId, transfer.getFileInfo(), false);
+			newFileTransfer = new FileTransfer(transfer.getHotWiredBridge(), transfer.getHotlineTransferId(),
+				wiredTransferId, transfer.getFileInfo(), transfer.getFileOffset(), false, transfer.getWiredChecksum());
 			wMap.put(wiredTransferId, newFileTransfer);
 			hMap.put(newFileTransfer.getHotlineTransferId(), newFileTransfer);
 			synchronized(transfer) {
