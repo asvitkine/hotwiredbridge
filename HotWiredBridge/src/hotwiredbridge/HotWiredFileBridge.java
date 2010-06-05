@@ -53,15 +53,9 @@ public class HotWiredFileBridge {
 		return MacRoman.toString(data);
 	}
 	
-	private static String readTag(DataInputStream in) throws IOException {
-		byte[] tag = new byte[4];
-		in.readFully(tag);
-		return new String(tag);
-	}
-
 	private void receiveFileFromHotline(FileTransfer transfer) throws Exception {
 		while (in.available() > 0) {
-			String tag = readTag(in);
+			String tag = HotlineUtils.readTag(in);
 			if (tag.equals("FILP")) {				
 				byte[] header = new byte[20];
 				in.readFully(header);
@@ -75,10 +69,16 @@ public class HotWiredFileBridge {
 				in.readInt();
 				in.readInt();
 				int length = in.readInt();
-				int checksumSize = (1024 * 1024 > length ? length : 1024 * 1024);
+				String checksum = transfer.getWiredChecksum();
+				int checksumSize = 0;
+				if (checksum == null) {
+					checksumSize = (1024 * 1024 > length ? length : 1024 * 1024);
+				}
 				byte[] checksumBuf = new byte[checksumSize];
-				in.readFully(checksumBuf);
-				String checksum = WiredUtils.SHA1(checksumBuf);
+				if (checksumSize > 0) {
+					in.readFully(checksumBuf);
+					checksum = WiredUtils.SHA1(checksumBuf);
+				}
 				String path = transfer.getFileInfo().getPath();
 				// We have enough info to send a putFile() to the wired server.
 				transfer.getHotWiredBridge().getWiredClient().putFile(path, length, checksum);
@@ -169,7 +169,7 @@ public class HotWiredFileBridge {
 		out.write("DATA".getBytes());
 		out.writeInt(0);
 		out.writeInt(0);
-		out.writeInt((int)transfer.getFileInfo().getSize());
+		out.writeInt((int)(transfer.getFileInfo().getSize() - transfer.getFileOffset()));
 		InputStream incoming = socket.getInputStream();
 		byte[] buf = new byte[64 * 1024];
 		int length = incoming.read(buf);
