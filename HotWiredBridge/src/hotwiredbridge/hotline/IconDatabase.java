@@ -10,6 +10,9 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.imageio.ImageIO;
 
@@ -28,25 +31,38 @@ public class IconDatabase {
 	public void loadIconsFromResourceFile(File file) throws IOException {
 		ResourceModel model = loadResources(file);
 		ResourceType icons = model.getResourceType("cicn");
-		int iconsLoaded = 0;
-		int iconsTotal = 0;
-		for (Resource r : icons.getResArray()) {
-			try {
-				BufferedImage icon = IconReader.readIcon(new ByteArrayInputStream(r.getData()));
-				ByteArrayOutputStream out = new ByteArrayOutputStream();
-				ImageIO.write(icon, "png", out);
-				Integer iconIndex = new Integer(r.getID());
-				String iconString = WiredUtils.bytesToBase64(out.toByteArray()); 
-				iconStrings.put(iconIndex, iconString);
-				stringIcons.put(iconString, iconIndex);
-				iconsLoaded++;
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			iconsTotal++;
+		final int[] iconStats = new int[2];
+		ExecutorService pool = Executors.newCachedThreadPool();
+		for (final Resource r : icons.getResArray()) {
+			iconStats[1]++;
+			pool.execute(new Runnable() {
+				public void run() {
+					try {
+						BufferedImage icon = IconReader.readIcon(new ByteArrayInputStream(r.getData()));
+						ByteArrayOutputStream out = new ByteArrayOutputStream();
+						ImageIO.write(icon, "png", out);
+						Integer iconIndex = new Integer(r.getID());
+						String iconString = WiredUtils.bytesToBase64(out.toByteArray());
+						synchronized (IconDatabase.this) {
+							iconStrings.put(iconIndex, iconString);
+							stringIcons.put(iconString, iconIndex);
+							iconStats[0]++;
+						}
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			});
 		}
-		
-		System.out.printf("INFO: %d / %d icons loaded.\n", iconsLoaded, iconsTotal);
+
+		try {
+			pool.shutdown();
+			pool.awaitTermination(60, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
+		System.out.printf("INFO: %d / %d icons loaded.\n", iconStats[0], iconStats[1]);
 	}
 	
 	public String getBase64FromIconIndex(int icon) {
