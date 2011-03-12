@@ -13,6 +13,7 @@ import javax.net.ssl.*;
 
 public class HotWiredBridge implements WiredEventHandler {
 	private WiredServerConfig config;
+	private KeyStoreProvider ksp;
 	private IconDatabase iconDB;
 	private FileTypeAndCreatorMap fileTypeAndCreatorMap;
 	private FileTransferMap fileTransferMap;
@@ -28,11 +29,12 @@ public class HotWiredBridge implements WiredEventHandler {
 	private Map<Long,Transaction> pendingCreateChatTransactions;
 	private boolean closed;
 
-	public HotWiredBridge(WiredServerConfig config, IconDatabase iconDB,
+	public HotWiredBridge(WiredServerConfig config, IconDatabase iconDB, KeyStoreProvider ksp,
 			FileTypeAndCreatorMap fileTypeAndCreatorMap, FileTransferMap fileTransferMap,
 			InputStream in, OutputStream out) {
 		this.config = config;
 		this.iconDB = iconDB;
+		this.ksp = ksp;
 		this.fileTypeAndCreatorMap = fileTypeAndCreatorMap;
 		this.fileTransferMap = fileTransferMap;
 		this.in = new DataInputStream(in);
@@ -150,12 +152,7 @@ public class HotWiredBridge implements WiredEventHandler {
 	}
 	
 	public WiredClient createClientFor(String host, int port) throws Exception {
-		File certificatesFile = new File("/Users/shadowknight/Projects/ventcore/ssl_certs");
-		InputStream in = new FileInputStream(certificatesFile);
-		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-		ks.load(in, "changeit".toCharArray());
-		in.close();
-
+		KeyStore ks = ksp.getKeyStore();
 		SSLContext context = SSLContext.getInstance("TLS");
 		String algorithm = TrustManagerFactory.getDefaultAlgorithm();
 		TrustManagerFactory tmf = TrustManagerFactory.getInstance(algorithm);
