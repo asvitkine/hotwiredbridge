@@ -22,6 +22,7 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class HotWiredFileBridge {
 	private WiredServerConfig config;
+	private KeyStoreProvider ksp;
 	private FileTypeAndCreatorMap fileTypeAndCreatorMap;
 	private FileTransferMap fileTransferMap;
 	private DataInputStream in;
@@ -29,9 +30,11 @@ public class HotWiredFileBridge {
 
 	private boolean closed;
 
-	public HotWiredFileBridge(WiredServerConfig config, FileTypeAndCreatorMap fileTypeAndCreatorMap,
+	public HotWiredFileBridge(WiredServerConfig config, KeyStoreProvider ksp,
+			FileTypeAndCreatorMap fileTypeAndCreatorMap,
 			FileTransferMap fileTransferMap, InputStream in, OutputStream out) {
 		this.config = config;
+		this.ksp = ksp;
 		this.fileTypeAndCreatorMap = fileTypeAndCreatorMap;
 		this.fileTransferMap = fileTransferMap;
 		this.in = new DataInputStream(in);
@@ -214,12 +217,7 @@ public class HotWiredFileBridge {
 	}
 
 	public SSLSocket openWiredSocket(String host, int port) throws Exception {
-		File certificatesFile = new File("/Users/shadowknight/Projects/ventcore/ssl_certs");
-		InputStream in = new FileInputStream(certificatesFile);
-		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-		ks.load(in, "changeit".toCharArray());
-		in.close();
-
+		KeyStore ks = ksp.getKeyStore();
 		SSLContext context = SSLContext.getInstance("TLS");
 		String algorithm = TrustManagerFactory.getDefaultAlgorithm();
 		TrustManagerFactory tmf = TrustManagerFactory.getInstance(algorithm);

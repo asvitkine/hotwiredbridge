@@ -7,7 +7,8 @@ import java.net.*;
 
 public class ServerApp {
 	public static void main(String[] args) throws IOException {
-		System.setProperty("java.awt.headless", "true"); 
+		System.setProperty("java.awt.headless", "true");
+		String root = "/Users/shadowknight/Projects/hotwiredbridge/";
 
 		final WiredServerConfig config = new WiredServerConfig("localhost", 2000);
 
@@ -16,7 +17,7 @@ public class ServerApp {
 		final IconDatabase iconDB = new IconDatabase();
 		try {
 			System.out.println("INFO: Loading Hotline icons...");
-			iconDB.loadIconsFromResourceFile(new File("/Users/shadowknight/Downloads/HotlineConnectClient-Mac/HLclient19.bin"));
+			iconDB.loadIconsFromResourceFile(new File(root + "HLclient19.bin"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -24,10 +25,14 @@ public class ServerApp {
 		final FileTypeAndCreatorMap fileTypeAndCreatorMap = new FileTypeAndCreatorMap();
 		try {
 			System.out.println("INFO: Loading type and creator codes database...");
-			fileTypeAndCreatorMap.loadFromAppleVolumesFile(new File("/Users/shadowknight/Projects/hotwiredbridge/AppleVolumes.system"));
+			fileTypeAndCreatorMap.loadFromAppleVolumesFile(new File(root + "AppleVolumes.system"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
+		File certificatesFile = new File(root + "ssl_certs");
+		String passphrase = "changeit";
+		final KeyStoreProvider ksp = new KeyStoreProvider(certificatesFile, passphrase);
 		
 		final FileTransferMap fileTransferMap = new FileTransferMap();
 
@@ -44,7 +49,7 @@ public class ServerApp {
 		new Thread() {
 			public void run() {
 				try {
-					runFileBridgeServer(config, fileTypeAndCreatorMap, fileTransferMap, fileBridgePort);
+					runFileBridgeServer(config, ksp, fileTypeAndCreatorMap, fileTransferMap, fileBridgePort);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -60,7 +65,8 @@ public class ServerApp {
 					try {
 						InputStream in = socket.getInputStream();
 						OutputStream out = socket.getOutputStream();
-						HotWiredBridge bridge = new HotWiredBridge(config, iconDB, fileTypeAndCreatorMap, fileTransferMap, in, out);
+						HotWiredBridge bridge = new HotWiredBridge(config, iconDB, ksp,
+							fileTypeAndCreatorMap, fileTransferMap, in, out);
 						bridge.run();
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -70,7 +76,7 @@ public class ServerApp {
 		}
 	}
 
-	private static void runFileBridgeServer(final WiredServerConfig config, final FileTypeAndCreatorMap fileTypeAndCreatorMap, final FileTransferMap fileTransferMap, int port) throws IOException {
+	private static void runFileBridgeServer(final WiredServerConfig config, final KeyStoreProvider ksp, final FileTypeAndCreatorMap fileTypeAndCreatorMap, final FileTransferMap fileTransferMap, int port) throws IOException {
 		ServerSocket serverSocket = new ServerSocket(port);
 		try {
 			InetAddress address = InetAddress.getLocalHost();
@@ -88,7 +94,7 @@ public class ServerApp {
 					try {
 						InputStream in = socket.getInputStream();
 						OutputStream out = socket.getOutputStream();
-						HotWiredFileBridge bridge = new HotWiredFileBridge(config, fileTypeAndCreatorMap, fileTransferMap, in, out);
+						HotWiredFileBridge bridge = new HotWiredFileBridge(config, ksp, fileTypeAndCreatorMap, fileTransferMap, in, out);
 						bridge.run();
 					} catch (Exception e) {
 						e.printStackTrace();
