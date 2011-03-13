@@ -45,6 +45,11 @@ public class Transaction {
 	public static final int ID_USERLEAVE = 302;
 	public static final int ID_GETUSERINFO = 303;
 	public static final int ID_CHANGE_NICK = 304;
+
+	public static final int ID_CREATEUSER = 350;
+	public static final int ID_DELETEUSER = 351;
+	public static final int ID_OPENUSER = 352;
+	public static final int ID_MODIFYUSER = 353;
 	public static final int ID_USERLIST = 354;
 	public static final int ID_BROADCAST = 355;
 
