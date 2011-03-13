@@ -215,10 +215,11 @@ public class HotWiredBridge implements WiredEventHandler {
 			Integer chatWindow = t.getObjectDataAsInt(TransactionObject.CHATWINDOW);
 			Integer param = t.getObjectDataAsInt(TransactionObject.PARAMETER);
 			int chatId = (chatWindow == null || chatWindow == 0 ? 1 : chatWindow);
+			String message = MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE));
 			if (param != null && param != 0) {
-				client.sendEmoteMessage(chatId, MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE)));
+				client.sendEmoteMessage(chatId, message);
 			} else {
-				client.sendChatMessage(chatId, MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE)));
+				client.sendChatMessage(chatId, message);
 			}
 			break;
 		}
@@ -459,6 +460,11 @@ public class HotWiredBridge implements WiredEventHandler {
 			if (chatEvent.isEmote()) {
 				t.addObject(TransactionObject.PARAMETER, HotlineUtils.pack("n", 1));	
 			}
+			queue.offer(t);
+		} else if (event instanceof BroadcastEvent) {
+			BroadcastEvent broadcastEvent = (BroadcastEvent) event;
+			Transaction t = factory.createRequest(Transaction.ID_BROADCAST);
+			t.addObject(TransactionObject.MESSAGE, MacRoman.fromString(broadcastEvent.getMessage()));
 			queue.offer(t);
 		} else if (event instanceof UserListEvent) {
 			UserListEvent userListEvent = (UserListEvent) event;
