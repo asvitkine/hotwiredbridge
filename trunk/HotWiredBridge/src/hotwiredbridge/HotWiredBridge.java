@@ -216,7 +216,11 @@ public class HotWiredBridge implements WiredEventHandler {
 			Integer param = t.getObjectDataAsInt(TransactionObject.PARAMETER);
 			int chatId = (chatWindow == null || chatWindow == 0 ? 1 : chatWindow);
 			String message = MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE));
-			if (param != null && param != 0) {
+			String broadcastPrefix = "/broadcast ";
+			if (message.startsWith(broadcastPrefix)) {
+				message = message.substring(broadcastPrefix.length());
+				client.broadcastMessage(message);
+			} else if (param != null && param != 0) {
 				client.sendEmoteMessage(chatId, message);
 			} else {
 				client.sendChatMessage(chatId, message);
