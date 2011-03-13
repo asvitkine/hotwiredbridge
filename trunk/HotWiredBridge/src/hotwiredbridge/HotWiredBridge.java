@@ -2,7 +2,6 @@ package hotwiredbridge;
 
 import hotwiredbridge.hotline.*;
 import wired.*;
-import wired.WiredClient.Priveleges;
 import wired.event.*;
 
 import java.security.*;
@@ -190,10 +189,10 @@ public class HotWiredBridge implements WiredEventHandler {
 			break;
 		}
 		case Transaction.ID_GETNEWS:
-			client.requestNews();
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
+			client.requestNews();
 			break;
 		case Transaction.ID_POST_NEWS: {
 			String message = MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE));
@@ -201,16 +200,16 @@ public class HotWiredBridge implements WiredEventHandler {
 			break;
 		}
 		case Transaction.ID_GETUSERLIST:
-			client.requestUserList(1);
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
+			client.requestUserList(1);
 			break;
 		case Transaction.ID_GETUSERINFO:
-			client.requestUserInfo(t.getObjectDataAsInt(TransactionObject.SOCKET));
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
+			client.requestUserInfo(t.getObjectDataAsInt(TransactionObject.SOCKET));
 			break;
 		case Transaction.ID_SEND_CHAT: {
 			Integer chatWindow = t.getObjectDataAsInt(TransactionObject.CHATWINDOW);
@@ -252,27 +251,27 @@ public class HotWiredBridge implements WiredEventHandler {
 		}
 		case Transaction.ID_GETFOLDERLIST: {
 			String path = convertPath(t.getObjectData(TransactionObject.PATH));
-			client.requestFileList(path);
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
+			client.requestFileList(path);
 			break;
 		}
 		case Transaction.ID_GETFILEINFO: {
 			String path = getFilePathFromTransaction(t);
-			client.requestFileInfo(path);
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
+			client.requestFileInfo(path);
 			break;
 		}
 		case Transaction.ID_DOWNLOAD: {
 			String path = getFilePathFromTransaction(t);
 			int resumeOffset = getResumeDataOffset(t.getObjectData(TransactionObject.RESUMEINFO));
-			client.getFile(path, resumeOffset);
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
+			client.getFile(path, resumeOffset);
 			break;
 		}
 		case Transaction.ID_UPLOAD: {
@@ -326,10 +325,10 @@ public class HotWiredBridge implements WiredEventHandler {
 			break;
 		}
 		case Transaction.ID_CREATE_PCHAT:
-			client.createPrivateChat();
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
+			client.createPrivateChat();
 			break;
 		case Transaction.ID_INVITE_TO_PCHAT:
 			client.inviteToChat(t.getObjectDataAsInt(TransactionObject.SOCKET), t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
@@ -338,11 +337,11 @@ public class HotWiredBridge implements WiredEventHandler {
 			client.declineInvitation(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
 			break;
 		case Transaction.ID_JOIN_PCHAT:
-			client.joinChat(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
-			client.requestUserList(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
+			client.joinChat(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
+			client.requestUserList(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
 			break;
 		case Transaction.ID_LEAVING_PCHAT:
 			client.leaveChat(t.getObjectDataAsInt(TransactionObject.CHATWINDOW));
@@ -355,12 +354,25 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_BROADCAST:
 			client.broadcastMessage(MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE)));
 			break;
-		case Transaction.ID_CREATEUSER: {
-			String nick = MacRoman.toString(t.getObjectData(TransactionObject.NICK));
+		case Transaction.ID_CREATEUSER:
+		case Transaction.ID_MODIFYUSER: {
 			String login = MacRoman.toString(decode(t.getObjectData(TransactionObject.LOGIN)));
 			String password = MacRoman.toString(decode(t.getObjectData(TransactionObject.PASSWORD)));
-			HotlinePriveleges privs = new HotlinePriveleges(t.getObjectData(TransactionObject.PRIVS));
-			client.createUser(login, password, "", convertHotlineToWiredPrivs(privs));
+			HotlinePrivileges privs = new HotlinePrivileges(t.getObjectData(TransactionObject.PRIVS));
+			if (t.getId() == Transaction.ID_CREATEUSER) {
+				client.createUser(login, password, "", convertHotlineToWiredPrivs(privs));
+			} else {
+				// TODO: Might be better to preserve old Wired values rather than resetting them.
+				client.editUser(login, password, "", convertHotlineToWiredPrivs(privs));
+			}
+			break;
+		}
+		case Transaction.ID_OPENUSER: {
+			String login = MacRoman.toString(t.getObjectData(TransactionObject.LOGIN));
+			synchronized (pendingTransactions) {
+				pendingTransactions.add(t);
+			}
+			client.readUserInfo(login);
 			break;
 		}
 		default:
@@ -369,19 +381,60 @@ public class HotWiredBridge implements WiredEventHandler {
 			queue.offer(t);
 		}
 	}
-	
-	private Priveleges convertHotlineToWiredPrivs(HotlinePriveleges privs) {
-		Priveleges wiredPrivs = new Priveleges();
-		wiredPrivs.setCanCreateFolders(privs.hasPrivelege(HotlinePriveleges.CAN_CREATE_FOLDERS));
-		wiredPrivs.setCanDownload(privs.hasPrivelege(HotlinePriveleges.CAN_DOWNLOAD_FILES));
-		wiredPrivs.setCanUpload(privs.hasPrivelege(HotlinePriveleges.CAN_UPLOAD_FILES));
-		wiredPrivs.setCanUploadAnywhere(privs.hasPrivelege(HotlinePriveleges.CAN_UPLOAD_ANYWHERE));
-		wiredPrivs.setCanDeleteFiles(privs.hasPrivelege(HotlinePriveleges.CAN_DELET_FILES));
-		wiredPrivs.setCanCreateAccounts(privs.hasPrivelege(HotlinePriveleges.CAN_CREATE_USERS));
-		wiredPrivs.setCanEditAccounts(privs.hasPrivelege(HotlinePriveleges.CAN_MODIFY_USERS));
-		wiredPrivs.setCanKickUsers(privs.hasPrivelege(HotlinePriveleges.CAN_DISCONNECT_USERS));
-		wiredPrivs.setCanNotBeKicked(privs.hasPrivelege(HotlinePriveleges.CANNOT_BE_DISCONNECTED));
+
+	private AccountPrivileges convertHotlineToWiredPrivs(HotlinePrivileges privs) {
+		AccountPrivileges wiredPrivs = new AccountPrivileges();
+		wiredPrivs.setCanGetUserInfo(privs.hasPrivilege(HotlinePrivileges.CAN_GET_USER_INFO));
+		wiredPrivs.setCanBroadcast(privs.hasPrivilege(HotlinePrivileges.CAN_POST_NEWS));
+		wiredPrivs.setCanPostNews(privs.hasPrivilege(HotlinePrivileges.CAN_POST_NEWS));
+		wiredPrivs.setCanClearNews(privs.hasPrivilege(HotlinePrivileges.CAN_POST_NEWS));
+		wiredPrivs.setCanDownload(privs.hasPrivilege(HotlinePrivileges.CAN_DOWNLOAD_FILES));
+		wiredPrivs.setCanUpload(privs.hasPrivilege(HotlinePrivileges.CAN_UPLOAD_FILES));
+		wiredPrivs.setCanUploadAnywhere(privs.hasPrivilege(HotlinePrivileges.CAN_UPLOAD_ANYWHERE));
+		wiredPrivs.setCanCreateFolders(privs.hasPrivilege(HotlinePrivileges.CAN_CREATE_FOLDERS));
+		wiredPrivs.setCanAlterFiles(privs.hasPrivilege(HotlinePrivileges.CAN_RENAME_FILES));
+		wiredPrivs.setCanDeleteFiles(privs.hasPrivilege(HotlinePrivileges.CAN_DELETE_FILES));
+		wiredPrivs.setCanViewDropBoxes(privs.hasPrivilege(HotlinePrivileges.CAN_VIEW_DROP_BOXES));
+		wiredPrivs.setCanCreateAccounts(privs.hasPrivilege(HotlinePrivileges.CAN_CREATE_USERS));
+		wiredPrivs.setCanEditAccounts(privs.hasPrivilege(HotlinePrivileges.CAN_MODIFY_USERS));
+		wiredPrivs.setCanDeleteAccounts(privs.hasPrivilege(HotlinePrivileges.CAN_DELETE_USERS));
+		wiredPrivs.setCanKickUsers(privs.hasPrivilege(HotlinePrivileges.CAN_DISCONNECT_USERS));
+		wiredPrivs.setCanBanUsers(privs.hasPrivilege(HotlinePrivileges.CAN_DELETE_USERS));
+		wiredPrivs.setCanNotBeKicked(privs.hasPrivilege(HotlinePrivileges.CANNOT_BE_DISCONNECTED));
+		wiredPrivs.setCanChangeTopic(privs.hasPrivilege(HotlinePrivileges.CAN_POST_NEWS));
 		return wiredPrivs;
+	}
+
+	private byte[] convertWiredPrivsToHotlinePrivs(AccountPrivileges wiredPrivs) {
+		HotlinePrivileges privs = new HotlinePrivileges();
+		privs.setPrivilege(HotlinePrivileges.CAN_GET_USER_INFO, wiredPrivs.getCanGetUserInfo());
+		privs.setPrivilege(HotlinePrivileges.CAN_UPLOAD_ANYWHERE, wiredPrivs.getCanUploadAnywhere());
+		privs.setPrivilege(HotlinePrivileges.CAN_USE_ANY_NAME, true);
+		privs.setPrivilege(HotlinePrivileges.DONT_SHOW_AGREEMENT, false);
+		privs.setPrivilege(HotlinePrivileges.CAN_COMMENT_FILES, wiredPrivs.getCanAlterFiles());
+		privs.setPrivilege(HotlinePrivileges.CAN_COMMENT_FOLDERS, wiredPrivs.getCanAlterFiles());
+		privs.setPrivilege(HotlinePrivileges.CAN_VIEW_DROP_BOXES, wiredPrivs.getCanViewDropBoxes());
+		privs.setPrivilege(HotlinePrivileges.CAN_MAKE_ALIASES, wiredPrivs.getCanUploadAnywhere());
+		privs.setPrivilege(HotlinePrivileges.CAN_READ_USERS, wiredPrivs.getCanEditAccounts());
+		privs.setPrivilege(HotlinePrivileges.CAN_MODIFY_USERS, wiredPrivs.getCanEditAccounts());
+		privs.setPrivilege(HotlinePrivileges.CAN_READ_NEWS, true);
+		privs.setPrivilege(HotlinePrivileges.CAN_POST_NEWS, wiredPrivs.getCanPostNews());
+		privs.setPrivilege(HotlinePrivileges.CAN_DISCONNECT_USERS, wiredPrivs.getCanKickUsers());
+		privs.setPrivilege(HotlinePrivileges.CANNOT_BE_DISCONNECTED, wiredPrivs.getCanNotBeKicked());
+		privs.setPrivilege(HotlinePrivileges.CAN_MOVE_FOLDERS, wiredPrivs.getCanCreateFolders() && wiredPrivs.getCanAlterFiles());
+		privs.setPrivilege(HotlinePrivileges.CAN_READ_CHAT, true);
+		privs.setPrivilege(HotlinePrivileges.CAN_SEND_CHAT, true);
+		privs.setPrivilege(HotlinePrivileges.CAN_CREATE_USERS, wiredPrivs.getCanCreateAccounts());
+		privs.setPrivilege(HotlinePrivileges.CAN_DELETE_USERS, wiredPrivs.getCanDeleteAccounts());
+		privs.setPrivilege(HotlinePrivileges.CAN_DELETE_FILES, wiredPrivs.getCanDeleteFiles());
+		privs.setPrivilege(HotlinePrivileges.CAN_UPLOAD_FILES, wiredPrivs.getCanUpload());
+		privs.setPrivilege(HotlinePrivileges.CAN_DOWNLOAD_FILES, wiredPrivs.getCanDownload());
+		privs.setPrivilege(HotlinePrivileges.CAN_RENAME_FILES, wiredPrivs.getCanAlterFiles());
+		privs.setPrivilege(HotlinePrivileges.CAN_MOVE_FILES, wiredPrivs.getCanAlterFiles());
+		privs.setPrivilege(HotlinePrivileges.CAN_CREATE_FOLDERS, wiredPrivs.getCanCreateFolders());
+		privs.setPrivilege(HotlinePrivileges.CAN_DELETE_FOLDERS, wiredPrivs.getCanCreateFolders() && wiredPrivs.getCanDeleteFiles());
+		privs.setPrivilege(HotlinePrivileges.CAN_RENAME_FOLDERS, wiredPrivs.getCanCreateFolders() && wiredPrivs.getCanAlterFiles());
+		return privs.toByteArray();
 	}
 	
 	private String getFilePathFromTransaction(Transaction t) {
@@ -766,6 +819,22 @@ public class HotWiredBridge implements WiredEventHandler {
 						queue.offer(reply);
 						pendingTransactions.remove(t);
 						break;
+					}
+				}
+			}
+		} else if (event instanceof UserAccountEvent) {
+			UserAccountEvent userAccountEvent = (UserAccountEvent) event;
+			synchronized (pendingTransactions) {
+				for (Transaction t : pendingTransactions) {
+					if (t.getId() == Transaction.ID_OPENUSER) {
+						// TODO: Check if its the same user!
+						Transaction reply = factory.createReply(t);
+						reply.addObject(TransactionObject.LOGIN, decode(MacRoman.fromString(userAccountEvent.getName())));
+						reply.addObject(TransactionObject.PASSWORD, decode(MacRoman.fromString(userAccountEvent.getPassword())));
+						reply.addObject(TransactionObject.PRIVS, convertWiredPrivsToHotlinePrivs(userAccountEvent.getPriveleges()));
+						// TODO: privs
+						queue.offer(reply);
+						pendingTransactions.remove(t);
 					}
 				}
 			}
