@@ -2,7 +2,7 @@ package hotwiredbridge.hotline;
 
 import java.io.*;
 
-public class HotlinePriveleges {
+public class HotlinePrivileges {
 	public static final int CAN_GET_USER_INFO = 31;
 	public static final int CAN_UPLOAD_ANYWHERE = 30;
 	public static final int CAN_USE_ANY_NAME = 29;
@@ -22,7 +22,7 @@ public class HotlinePriveleges {
 	public static final int CAN_SEND_CHAT = 13;
 	public static final int CAN_CREATE_USERS = 9;
 	public static final int CAN_DELETE_USERS = 8;
-	public static final int CAN_DELET_FILES = 7;
+	public static final int CAN_DELETE_FILES = 7;
 	public static final int CAN_UPLOAD_FILES = 6;
 	public static final int CAN_DOWNLOAD_FILES = 5;
 	public static final int CAN_RENAME_FILES = 4;
@@ -33,7 +33,10 @@ public class HotlinePriveleges {
 
 	private long value;
 
-	public HotlinePriveleges(byte[] data) {
+	public HotlinePrivileges() {
+	}
+	
+	public HotlinePrivileges(byte[] data) {
 		try {
 			value = new DataInputStream(new ByteArrayInputStream(data)).readLong();
 		} catch (IOException e) {
@@ -41,7 +44,27 @@ public class HotlinePriveleges {
 		}
 	}
 
-	public boolean hasPrivelege(int bit) {
-		return (value & (1 << bit)) != 0;
+	public boolean hasPrivilege(int bit) {
+		return (value & (1L << (63-bit))) != 0;
+	}
+	
+	public void setPrivilege(int bit, boolean bitValue) {
+		if (bitValue) {
+			value |= (1L << (63-bit));
+		} else {
+			value &= ~(1L << (63-bit));
+		}
+	}
+	
+	public byte[] toByteArray() {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		DataOutputStream dout = new DataOutputStream(out);
+		try {
+			dout.writeLong(value);
+			dout.flush();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		return out.toByteArray();
 	}
 }
