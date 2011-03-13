@@ -2,6 +2,7 @@ package hotwiredbridge;
 
 import hotwiredbridge.hotline.*;
 import wired.*;
+import wired.WiredClient.Priveleges;
 import wired.event.*;
 
 import java.security.*;
@@ -354,11 +355,33 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_BROADCAST:
 			client.broadcastMessage(MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE)));
 			break;
+		case Transaction.ID_CREATEUSER: {
+			String nick = MacRoman.toString(t.getObjectData(TransactionObject.NICK));
+			String login = MacRoman.toString(decode(t.getObjectData(TransactionObject.LOGIN)));
+			String password = MacRoman.toString(decode(t.getObjectData(TransactionObject.PASSWORD)));
+			HotlinePriveleges privs = new HotlinePriveleges(t.getObjectData(TransactionObject.PRIVS));
+			client.createUser(login, password, "", convertHotlineToWiredPrivs(privs));
+			break;
+		}
 		default:
 			System.out.println("NOT HANDLED!");
 			t = factory.createReply(t, true);
 			queue.offer(t);
 		}
+	}
+	
+	private Priveleges convertHotlineToWiredPrivs(HotlinePriveleges privs) {
+		Priveleges wiredPrivs = new Priveleges();
+		wiredPrivs.setCanCreateFolders(privs.hasPrivelege(HotlinePriveleges.CAN_CREATE_FOLDERS));
+		wiredPrivs.setCanDownload(privs.hasPrivelege(HotlinePriveleges.CAN_DOWNLOAD_FILES));
+		wiredPrivs.setCanUpload(privs.hasPrivelege(HotlinePriveleges.CAN_UPLOAD_FILES));
+		wiredPrivs.setCanUploadAnywhere(privs.hasPrivelege(HotlinePriveleges.CAN_UPLOAD_ANYWHERE));
+		wiredPrivs.setCanDeleteFiles(privs.hasPrivelege(HotlinePriveleges.CAN_DELET_FILES));
+		wiredPrivs.setCanCreateAccounts(privs.hasPrivelege(HotlinePriveleges.CAN_CREATE_USERS));
+		wiredPrivs.setCanEditAccounts(privs.hasPrivelege(HotlinePriveleges.CAN_MODIFY_USERS));
+		wiredPrivs.setCanKickUsers(privs.hasPrivelege(HotlinePriveleges.CAN_DISCONNECT_USERS));
+		wiredPrivs.setCanNotBeKicked(privs.hasPrivelege(HotlinePriveleges.CANNOT_BE_DISCONNECTED));
+		return wiredPrivs;
 	}
 	
 	private String getFilePathFromTransaction(Transaction t) {
