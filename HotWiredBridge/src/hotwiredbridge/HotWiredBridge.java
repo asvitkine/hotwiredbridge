@@ -10,6 +10,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.io.*;
 
 import javax.net.ssl.*;
+import javax.swing.JOptionPane;
 
 public class HotWiredBridge implements WiredEventHandler {
 	private WiredServerConfig config;
@@ -407,6 +408,7 @@ public class HotWiredBridge implements WiredEventHandler {
 
 	private byte[] convertWiredPrivsToHotlinePrivs(AccountPrivileges wiredPrivs) {
 		HotlinePrivileges privs = new HotlinePrivileges();
+//		privs.setPrivilege(Integer.parseInt(JOptionPane.showInputDialog(null)), true);
 		privs.setPrivilege(HotlinePrivileges.CAN_GET_USER_INFO, wiredPrivs.getCanGetUserInfo());
 		privs.setPrivilege(HotlinePrivileges.CAN_UPLOAD_ANYWHERE, wiredPrivs.getCanUploadAnywhere());
 		privs.setPrivilege(HotlinePrivileges.CAN_USE_ANY_NAME, true);
@@ -832,9 +834,9 @@ public class HotWiredBridge implements WiredEventHandler {
 						reply.addObject(TransactionObject.LOGIN, decode(MacRoman.fromString(userAccountEvent.getName())));
 						reply.addObject(TransactionObject.PASSWORD, decode(MacRoman.fromString(userAccountEvent.getPassword())));
 						reply.addObject(TransactionObject.PRIVS, convertWiredPrivsToHotlinePrivs(userAccountEvent.getPriveleges()));
-						// TODO: privs
 						queue.offer(reply);
 						pendingTransactions.remove(t);
+						break;
 					}
 				}
 			}
