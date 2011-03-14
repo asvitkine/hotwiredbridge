@@ -29,6 +29,7 @@ public class TransactionObject {
 	public static final int FILECREATED = 209;
 	public static final int COMMENT = 210;
 	public static final int NEWFILENAME = 211;
+	public static final int TARGETPATH = 212;
 	public static final int FILETYPE = 213;
 	public static final int USER = 300;
 

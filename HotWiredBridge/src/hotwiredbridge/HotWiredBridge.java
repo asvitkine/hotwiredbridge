@@ -163,6 +163,13 @@ public class HotWiredBridge implements WiredEventHandler {
 		wiredSocket.setEnabledProtocols(new String[] {"TLSv1"});
 		return new EventBasedWiredClient(wiredSocket.getInputStream(), wiredSocket.getOutputStream(), this);
 	}
+	
+	private void scheduleSuccessReply(Transaction t) {
+		// TODO: schedule it with a delay...
+		//       if we get an error for this t within
+		//       the delay, then don't send the error!
+		queue.offer(factory.createReply(t));
+	}
 
 	public void handleTransaction(Transaction t) throws IOException {
 		switch (t.getId()) {
@@ -197,7 +204,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_POST_NEWS: {
 			String message = MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE));
 			client.postNews(message);
-			queue.offer(factory.createReply(t));
+			scheduleSuccessReply(t);
 			break;
 		}
 		case Transaction.ID_GETUSERLIST:
@@ -238,7 +245,7 @@ public class HotWiredBridge implements WiredEventHandler {
 			int userId = t.getObjectDataAsInt(TransactionObject.SOCKET);
 			String message = MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE));
 			client.sendPrivateMessage(userId, message);
-			queue.offer(factory.createReply(t));
+			scheduleSuccessReply(t);
 			break;
 		}
 		case Transaction.ID_CHANGE_NICK: {
@@ -255,7 +262,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_CREATEFOLDER: {
 			String path = getFilePathFromTransaction(t);
 			client.createFolder(path);
-			queue.offer(factory.createReply(t));
+			scheduleSuccessReply(t);
 			break;
 		}
 		case Transaction.ID_GETFOLDERLIST: {
@@ -317,7 +324,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_DELETE: {
 			String path = getFilePathFromTransaction(t);
 			client.deleteFile(path);
-			queue.offer(factory.createReply(t));
+			scheduleSuccessReply(t);
 			break;
 		}
 		case Transaction.ID_SETFILEINFO: {
@@ -332,7 +339,15 @@ public class HotWiredBridge implements WiredEventHandler {
 				newPath += "/" + newFilename;
 				client.moveFile(path, newPath);
 			}
-			queue.offer(factory.createReply(t));
+			scheduleSuccessReply(t);
+			break;
+		}
+		case Transaction.ID_MOVEFILE: {
+			String path = getFilePathFromTransaction(t);
+			String targetPath = getFilePathFromTransacation(t,
+				TransactionObject.TARGETPATH, TransactionObject.FILENAME);
+			client.moveFile(path, targetPath);
+			scheduleSuccessReply(t);
 			break;
 		}
 		case Transaction.ID_CREATE_PCHAT:
@@ -451,10 +466,14 @@ public class HotWiredBridge implements WiredEventHandler {
 		return privs.toByteArray();
 	}
 	
-	private String getFilePathFromTransaction(Transaction t) {
-		String path = convertPath(t.getObjectData(TransactionObject.PATH));
-		path += "/" + MacRoman.toString(t.getObjectData(TransactionObject.FILENAME));
+	private String getFilePathFromTransacation(Transaction t, int pathObject, int filenameObject) {
+		String path = convertPath(t.getObjectData(pathObject));
+		path += "/" + MacRoman.toString(t.getObjectData(filenameObject));
 		return path;
+	}
+	
+	private String getFilePathFromTransaction(Transaction t) {
+		return getFilePathFromTransacation(t, TransactionObject.PATH, TransactionObject.FILENAME);
 	}
 	
 	private boolean isResumeUploadTransaction(Transaction t) {
