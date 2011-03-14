@@ -3,8 +3,6 @@ package hotwiredbridge.hotline;
 import java.io.*;
 
 public class HotlinePrivileges {
-
-
 	public static final int CAN_DELETE_FILES = 63;
 	public static final int CAN_UPLOAD_FILES = 62;
 	public static final int CAN_DOWNLOAD_FILES = 61;
@@ -33,7 +31,15 @@ public class HotlinePrivileges {
 	public static final int CAN_COMMENT_FOLDERS = 34;
 	public static final int CAN_VIEW_DROP_BOXES = 33;
 	public static final int CAN_MAKE_ALIASES = 32;
-
+	public static final int CAN_BROADCAST = 31;
+	public static final int CAN_DELETE_NEWS_POSTS = 30;
+	public static final int CAN_CREATE_NEWS_CATEGORIES = 29;
+	public static final int CAN_DELETE_NEWS_CATEGORIES = 28;
+	public static final int CAN_CREATE_NEWS_BUNDLES = 27;
+	public static final int CAN_DELETE_NEWS_BUNDLES = 26;
+	public static final int CAN_UPLOAD_FOLDERS = 25;
+	public static final int CAN_DOWNLOAD_FOLDERS = 24;
+	public static final int CAN_SEND_MESSAGES = 23;
 
 	private long value;
 
@@ -43,6 +49,12 @@ public class HotlinePrivileges {
 	public HotlinePrivileges(byte[] data) {
 		try {
 			value = new DataInputStream(new ByteArrayInputStream(data)).readLong();
+			for (int i = 0; i < 64; i++) {
+				if (hasPrivilege(i)) {
+					System.err.print(i+" ");
+				}
+			}
+			System.err.println();
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -73,6 +85,12 @@ public class HotlinePrivileges {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+		for (int i = 0; i < 64; i++) {
+			if (hasPrivilege(i)) {
+				System.err.print(i+" ");
+			}
+		}
+		System.err.println();
 		return out.toByteArray();
 	}
 }

@@ -10,7 +10,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.io.*;
 
 import javax.net.ssl.*;
-import javax.swing.JOptionPane;
 
 public class HotWiredBridge implements WiredEventHandler {
 	private WiredServerConfig config;
@@ -198,6 +197,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_POST_NEWS: {
 			String message = MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE));
 			client.postNews(message);
+			queue.offer(factory.createReply(t));
 			break;
 		}
 		case Transaction.ID_GETUSERLIST:
@@ -231,7 +231,8 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_SEND_PM: {
 			int userId = t.getObjectDataAsInt(TransactionObject.SOCKET);
 			String message = MacRoman.toString(t.getObjectData(TransactionObject.MESSAGE));
-			client.sendPrivateMessage(userId, message);			
+			client.sendPrivateMessage(userId, message);
+			queue.offer(factory.createReply(t));
 			break;
 		}
 		case Transaction.ID_CHANGE_NICK: {
@@ -248,6 +249,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_CREATEFOLDER: {
 			String path = getFilePathFromTransaction(t);
 			client.createFolder(path);
+			queue.offer(factory.createReply(t));
 			break;
 		}
 		case Transaction.ID_GETFOLDERLIST: {
@@ -309,6 +311,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		case Transaction.ID_DELETE: {
 			String path = getFilePathFromTransaction(t);
 			client.deleteFile(path);
+			queue.offer(factory.createReply(t));
 			break;
 		}
 		case Transaction.ID_SETFILEINFO: {
@@ -323,6 +326,7 @@ public class HotWiredBridge implements WiredEventHandler {
 				newPath += "/" + newFilename;
 				client.moveFile(path, newPath);
 			}
+			queue.offer(factory.createReply(t));
 			break;
 		}
 		case Transaction.ID_CREATE_PCHAT:
@@ -403,12 +407,12 @@ public class HotWiredBridge implements WiredEventHandler {
 		wiredPrivs.setCanBanUsers(privs.hasPrivilege(HotlinePrivileges.CAN_DELETE_USERS));
 		wiredPrivs.setCanNotBeKicked(privs.hasPrivilege(HotlinePrivileges.CANNOT_BE_DISCONNECTED));
 		wiredPrivs.setCanChangeTopic(privs.hasPrivilege(HotlinePrivileges.CAN_POST_NEWS));
+		wiredPrivs.setCanBroadcast(privs.hasPrivilege(HotlinePrivileges.CAN_BROADCAST));
 		return wiredPrivs;
 	}
 
 	private byte[] convertWiredPrivsToHotlinePrivs(AccountPrivileges wiredPrivs) {
 		HotlinePrivileges privs = new HotlinePrivileges();
-//		privs.setPrivilege(Integer.parseInt(JOptionPane.showInputDialog(null)), true);
 		privs.setPrivilege(HotlinePrivileges.CAN_GET_USER_INFO, wiredPrivs.getCanGetUserInfo());
 		privs.setPrivilege(HotlinePrivileges.CAN_UPLOAD_ANYWHERE, wiredPrivs.getCanUploadAnywhere());
 		privs.setPrivilege(HotlinePrivileges.CAN_USE_ANY_NAME, true);
@@ -426,6 +430,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		privs.setPrivilege(HotlinePrivileges.CAN_MOVE_FOLDERS, wiredPrivs.getCanCreateFolders() && wiredPrivs.getCanAlterFiles());
 		privs.setPrivilege(HotlinePrivileges.CAN_READ_CHAT, true);
 		privs.setPrivilege(HotlinePrivileges.CAN_SEND_CHAT, true);
+		privs.setPrivilege(HotlinePrivileges.CAN_START_CHATS, true);
 		privs.setPrivilege(HotlinePrivileges.CAN_CREATE_USERS, wiredPrivs.getCanCreateAccounts());
 		privs.setPrivilege(HotlinePrivileges.CAN_DELETE_USERS, wiredPrivs.getCanDeleteAccounts());
 		privs.setPrivilege(HotlinePrivileges.CAN_DELETE_FILES, wiredPrivs.getCanDeleteFiles());
@@ -436,6 +441,7 @@ public class HotWiredBridge implements WiredEventHandler {
 		privs.setPrivilege(HotlinePrivileges.CAN_CREATE_FOLDERS, wiredPrivs.getCanCreateFolders());
 		privs.setPrivilege(HotlinePrivileges.CAN_DELETE_FOLDERS, wiredPrivs.getCanCreateFolders() && wiredPrivs.getCanDeleteFiles());
 		privs.setPrivilege(HotlinePrivileges.CAN_RENAME_FOLDERS, wiredPrivs.getCanCreateFolders() && wiredPrivs.getCanAlterFiles());
+		privs.setPrivilege(HotlinePrivileges.CAN_BROADCAST, wiredPrivs.getCanBroadcast());
 		return privs.toByteArray();
 	}
 	
