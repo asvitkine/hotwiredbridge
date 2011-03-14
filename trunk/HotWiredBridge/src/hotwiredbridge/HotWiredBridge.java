@@ -841,14 +841,17 @@ public class HotWiredBridge implements WiredEventHandler {
 			synchronized (pendingTransactions) {
 				for (Transaction t : pendingTransactions) {
 					if (t.getId() == Transaction.ID_OPENUSER) {
-						// TODO: Check if its the same user!
-						Transaction reply = factory.createReply(t);
-						reply.addObject(TransactionObject.LOGIN, MacRoman.fromString(userAccountEvent.getName()));
-						reply.addObject(TransactionObject.PASSWORD, decode(MacRoman.fromString(userAccountEvent.getPassword())));
-						reply.addObject(TransactionObject.PRIVS, convertWiredPrivsToHotlinePrivs(userAccountEvent.getPriveleges()));
-						queue.offer(reply);
-						pendingTransactions.remove(t);
-						break;
+						String login = MacRoman.toString(t.getObjectData(TransactionObject.LOGIN));
+						if (login.equals(userAccountEvent.getName())) {
+							Transaction reply = factory.createReply(t);
+							reply.addObject(TransactionObject.LOGIN, decode(MacRoman.fromString(userAccountEvent.getName())));
+							reply.addObject(TransactionObject.PASSWORD, decode(MacRoman.fromString(userAccountEvent.getPassword())));
+							reply.addObject(TransactionObject.PRIVS, convertWiredPrivsToHotlinePrivs(userAccountEvent.getPriveleges()));
+							reply.addObject(TransactionObject.NICK, MacRoman.fromString(userAccountEvent.getName()));
+							queue.offer(reply);
+							pendingTransactions.remove(t);
+							break;
+						}
 					}
 				}
 			}
