@@ -206,12 +206,18 @@ public class HotWiredBridge implements WiredEventHandler {
 			}
 			client.requestUserList(1);
 			break;
-		case Transaction.ID_GETUSERINFO:
+		case Transaction.ID_GETUSERINFO: {
+			int userId = t.getObjectDataAsInt(TransactionObject.SOCKET);
+			if (userId == 1 && userNames.get(1L) == null) {
+				/* Ignore Frogblast's "KeepAlive" packets. */
+				break;
+			}
 			synchronized (pendingTransactions) {
 				pendingTransactions.add(t);
 			}
-			client.requestUserInfo(t.getObjectDataAsInt(TransactionObject.SOCKET));
+			client.requestUserInfo(userId);
 			break;
+		}
 		case Transaction.ID_SEND_CHAT: {
 			Integer chatWindow = t.getObjectDataAsInt(TransactionObject.CHATWINDOW);
 			Integer param = t.getObjectDataAsInt(TransactionObject.PARAMETER);
@@ -837,7 +843,7 @@ public class HotWiredBridge implements WiredEventHandler {
 					if (t.getId() == Transaction.ID_OPENUSER) {
 						// TODO: Check if its the same user!
 						Transaction reply = factory.createReply(t);
-						reply.addObject(TransactionObject.LOGIN, decode(MacRoman.fromString(userAccountEvent.getName())));
+						reply.addObject(TransactionObject.LOGIN, MacRoman.fromString(userAccountEvent.getName()));
 						reply.addObject(TransactionObject.PASSWORD, decode(MacRoman.fromString(userAccountEvent.getPassword())));
 						reply.addObject(TransactionObject.PRIVS, convertWiredPrivsToHotlinePrivs(userAccountEvent.getPriveleges()));
 						queue.offer(reply);
