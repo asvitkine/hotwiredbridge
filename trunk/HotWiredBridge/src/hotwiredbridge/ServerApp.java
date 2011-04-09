@@ -4,9 +4,13 @@ import hotwiredbridge.hotline.IconDatabase;
 
 import java.io.*;
 import java.net.*;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 
 public class ServerApp {
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, KeyManagementException, KeyStoreException, NoSuchAlgorithmException, CertificateException {
 		System.setProperty("java.awt.headless", "true");
 		String root = "/Users/shadowknight/Projects/hotwiredbridge/";
 
@@ -32,8 +36,13 @@ public class ServerApp {
 		
 		File certificatesFile = new File(root + "ssl_certs");
 		String passphrase = "changeit";
+
 		final KeyStoreProvider ksp = new KeyStoreProvider(certificatesFile, passphrase);
-		
+		System.out.println("INFO: Getting server SSL certificates...");
+		boolean added = ksp.addCertificatesForServer(config.getHost(), config.getPort());
+		System.out.println("INFO: SSL certificates were " +
+				(added ? "added to" : "already present in") + " keystore file.");
+
 		final FileTransferMap fileTransferMap = new FileTransferMap();
 
 		int port = 4000;
@@ -75,7 +84,7 @@ public class ServerApp {
 			}.start();
 		}
 	}
-
+	
 	private static void runFileBridgeServer(final WiredServerConfig config, final KeyStoreProvider ksp, final FileTypeAndCreatorMap fileTypeAndCreatorMap, final FileTransferMap fileTransferMap, int port) throws IOException {
 		ServerSocket serverSocket = new ServerSocket(port);
 		try {
