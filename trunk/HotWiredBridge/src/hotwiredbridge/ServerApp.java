@@ -10,18 +10,32 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 
 public class ServerApp {
+	
+	public static ServerConfig getServerConfig() {
+		ServerConfig config = new ServerConfig();
+		String root = "/Users/shadowknight/Projects/hotwiredbridge/";
+		config.setWiredHost("localhost");
+		config.setWiredPort(2000);
+		config.setIconsFilePath(root + "HLclient19.bin");
+		config.setAppleVolumesFilePath(root + "AppleVolumes.system");
+		config.setCertificatesFilePath(root + "ssl_certs");
+		config.setCertificatesFilePassphrase(root + "changeit");
+		config.setHotlinePort(4000);
+		return config;
+	}
+	
 	public static void main(String[] args) throws IOException, KeyManagementException, KeyStoreException, NoSuchAlgorithmException, CertificateException {
 		System.setProperty("java.awt.headless", "true");
-		String root = "/Users/shadowknight/Projects/hotwiredbridge/";
 
-		final WiredServerConfig config = new WiredServerConfig("localhost", 2000);
+		ServerConfig serverConfig = getServerConfig();
+		final WiredServerConfig config = new WiredServerConfig(serverConfig.getWiredHost(), serverConfig.getWiredPort());
 
 		System.out.println("INFO: Starting server...");
 
 		final IconDatabase iconDB = new IconDatabase();
 		try {
 			System.out.println("INFO: Loading Hotline icons...");
-			iconDB.loadIconsFromResourceFile(new File(root + "HLclient19.bin"));
+			iconDB.loadIconsFromResourceFile(new File(serverConfig.getIconsFilePath()));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -29,13 +43,13 @@ public class ServerApp {
 		final FileTypeAndCreatorMap fileTypeAndCreatorMap = new FileTypeAndCreatorMap();
 		try {
 			System.out.println("INFO: Loading type and creator codes database...");
-			fileTypeAndCreatorMap.loadFromAppleVolumesFile(new File(root + "AppleVolumes.system"));
+			fileTypeAndCreatorMap.loadFromAppleVolumesFile(new File(serverConfig.getAppleVolumesFilePath()));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		
-		File certificatesFile = new File(root + "ssl_certs");
-		String passphrase = "changeit";
+		File certificatesFile = new File(serverConfig.getCertificatesFilePath());
+		String passphrase = serverConfig.getCertificatesFilePassphrase();
 
 		final KeyStoreProvider ksp = new KeyStoreProvider(certificatesFile, passphrase);
 		System.out.println("INFO: Getting server SSL certificates...");
@@ -45,7 +59,7 @@ public class ServerApp {
 
 		final FileTransferMap fileTransferMap = new FileTransferMap();
 
-		int port = 4000;
+		int port = serverConfig.getHotlinePort();
 		ServerSocket serverSocket = new ServerSocket(port);
 		try {
 			InetAddress address = InetAddress.getLocalHost();
