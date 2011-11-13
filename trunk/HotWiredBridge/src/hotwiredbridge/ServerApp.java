@@ -11,7 +11,7 @@ import java.security.cert.CertificateException;
 
 public class ServerApp {
 	
-	public static ServerConfig getServerConfig() {
+	public static ServerConfig getDefaultServerConfig() {
 		ServerConfig config = new ServerConfig();
 		String root = "/Users/shadowknight/Projects/hotwiredbridge/";
 		config.setWiredHost("localhost");
@@ -19,7 +19,7 @@ public class ServerApp {
 		config.setIconsFilePath(root + "HLclient19.bin");
 		config.setAppleVolumesFilePath(root + "AppleVolumes.system");
 		config.setCertificatesFilePath(root + "ssl_certs");
-		config.setCertificatesFilePassphrase(root + "changeit");
+		config.setCertificatesFilePassphrase("changeit");
 		config.setHotlinePort(4000);
 		return config;
 	}
@@ -27,7 +27,31 @@ public class ServerApp {
 	public static void main(String[] args) throws IOException, KeyManagementException, KeyStoreException, NoSuchAlgorithmException, CertificateException {
 		System.setProperty("java.awt.headless", "true");
 
-		ServerConfig serverConfig = getServerConfig();
+		ServerConfig serverConfig = null;
+
+		boolean nextIsConfigPath = false;
+		for (String arg : args) {
+			if (nextIsConfigPath) {
+				System.out.println("INFO: Reading server config from file '" + arg + "'.");
+				serverConfig = ServerConfigReader.read(arg);
+				nextIsConfigPath = false;
+				break;
+			}
+			if (arg.equals("-config")) {
+				nextIsConfigPath = true;
+			}
+		}
+		
+		if (nextIsConfigPath) {
+			System.out.println("ERROR: Missing argument follow '-config'.");
+			return;
+		}
+
+		if (serverConfig == null) {
+			System.out.println("WARNING: Using default (hardcoded) server config...");
+			serverConfig = getDefaultServerConfig();
+		}
+
 		final WiredServerConfig config = new WiredServerConfig(serverConfig.getWiredHost(), serverConfig.getWiredPort());
 
 		System.out.println("INFO: Starting server...");
