@@ -11,7 +11,6 @@ import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import javax.imageio.ImageIO;
@@ -28,11 +27,10 @@ public class IconDatabase {
 		stringIcons = new HashMap<String, Integer>();
 	}
 	
-	public void loadIconsFromResourceFile(File file) throws IOException {
+	public void loadIconsFromResourceFile(File file, ExecutorService pool) throws IOException {
 		ResourceModel model = loadResources(file);
 		ResourceType icons = model.getResourceType("cicn");
 		final int[] iconStats = new int[2];
-		ExecutorService pool = Executors.newCachedThreadPool();
 		for (final Resource r : icons.getResArray()) {
 			iconStats[1]++;
 			pool.execute(new Runnable() {

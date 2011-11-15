@@ -7,7 +7,9 @@ public class ServerConfig {
 	private String certificatesFilePath;
 	private String certificatesFilePassphrase;
 	private String iconsFilePath;
+	private boolean parallelIconLoading;
 	private String appleVolumesFilePath;
+	private boolean ignoreSigTerm;
 
 	public String getAppleVolumesFilePath() {
 		return appleVolumesFilePath;
@@ -50,5 +52,17 @@ public class ServerConfig {
 	}
 	public void setIconsFilePath(String iconsFilePath) {
 		this.iconsFilePath = iconsFilePath;
+	}
+	public boolean getIgnoreSigTerm() {
+		return ignoreSigTerm;
+	}
+	public void setIgnoreSigTerm(boolean ignoreSigTerm) {
+		this.ignoreSigTerm = ignoreSigTerm;
+	}
+	public void setParallelIconLoading(boolean parallelIconLoading) {
+		this.parallelIconLoading = parallelIconLoading;
+	}
+	public boolean getParallelIconLoading() {
+		return parallelIconLoading;
 	}
 }
