@@ -14,10 +14,12 @@ public class ServerConfigReader {
 			config.setWiredHost(properties.getProperty("WIRED_HOST"));
 			config.setWiredPort(Integer.valueOf(properties.getProperty("WIRED_PORT")));
 			config.setIconsFilePath(properties.getProperty("ICON_FILE_PATH"));
+			config.setParallelIconLoading(Boolean.valueOf(properties.getProperty("ICON_FILE_PARALLEL_LOAD")));
 			config.setAppleVolumesFilePath(properties.getProperty("APPLE_VOLUMES_FILE_PATH"));
 			config.setCertificatesFilePath(properties.getProperty("CERTIFICATES_FILE_PATH"));
 			config.setCertificatesFilePassphrase(properties.getProperty("CERTIFICATES_FILE_PASSPHRASE"));
 			config.setHotlinePort(Integer.valueOf(properties.getProperty("HOTLINE_PORT")));
+			config.setIgnoreSigTerm(Boolean.valueOf(properties.getProperty("IGNORE_SIGTERM")));
 		} finally {
 			in.close();
 		}

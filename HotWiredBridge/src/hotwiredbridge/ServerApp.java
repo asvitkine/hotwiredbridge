@@ -8,6 +8,8 @@ import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ServerApp {
 	
@@ -52,14 +54,24 @@ public class ServerApp {
 			serverConfig = getDefaultServerConfig();
 		}
 
+		if (serverConfig.getIgnoreSigTerm()) {
+			System.out.println("INFO: Installing SIGTERM handler...");
+			new SignalSuppressor(SignalSuppressor.SIGTERM).installHandler();
+		}
+
 		final WiredServerConfig config = new WiredServerConfig(serverConfig.getWiredHost(), serverConfig.getWiredPort());
 
 		System.out.println("INFO: Starting server...");
 
 		final IconDatabase iconDB = new IconDatabase();
 		try {
-			System.out.println("INFO: Loading Hotline icons...");
-			iconDB.loadIconsFromResourceFile(new File(serverConfig.getIconsFilePath()));
+			boolean parallel = serverConfig.getParallelIconLoading();
+			System.out.println("INFO: Loading Hotline icons (parallel = " + parallel + ")...");
+			ExecutorService pool = parallel ?
+				Executors.newCachedThreadPool() :
+				Executors.newSingleThreadExecutor();
+
+			iconDB.loadIconsFromResourceFile(new File(serverConfig.getIconsFilePath()), pool);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
