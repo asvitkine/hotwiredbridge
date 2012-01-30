@@ -21,6 +21,6 @@ public class SignalSuppressor implements SignalHandler {
 
 	@Override
 	public void handle(Signal sig) {
-		System.out.println("INFO: Received signal " + sig + ". Ignoring.");		
+		ServerApp.log("INFO: Received signal " + sig + ". Ignoring.");		
 	}
 }

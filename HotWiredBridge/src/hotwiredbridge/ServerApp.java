@@ -8,11 +8,14 @@ import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ServerApp {
-	
+	private static SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss dd/MM/yyyy");
+
 	public static ServerConfig getDefaultServerConfig() {
 		ServerConfig config = new ServerConfig();
 		String root = "/Users/shadowknight/Projects/hotwiredbridge/";
@@ -26,6 +29,10 @@ public class ServerApp {
 		return config;
 	}
 	
+	public static void log(String message, Object... args) {
+		System.out.println(format.format(new Date()) + "\t" + String.format(message, args));
+	}
+	
 	public static void main(String[] args) throws IOException, KeyManagementException, KeyStoreException, NoSuchAlgorithmException, CertificateException {
 		System.setProperty("java.awt.headless", "true");
 
@@ -34,7 +41,7 @@ public class ServerApp {
 		boolean nextIsConfigPath = false;
 		for (String arg : args) {
 			if (nextIsConfigPath) {
-				System.out.println("INFO: Reading server config from file '" + arg + "'.");
+				log("INFO: Reading server config from file '" + arg + "'.");
 				serverConfig = ServerConfigReader.read(arg);
 				nextIsConfigPath = false;
 				break;
@@ -45,28 +52,28 @@ public class ServerApp {
 		}
 		
 		if (nextIsConfigPath) {
-			System.out.println("ERROR: Missing argument follow '-config'.");
+			log("ERROR: Missing argument follow '-config'.");
 			return;
 		}
 
 		if (serverConfig == null) {
-			System.out.println("WARNING: Using default (hardcoded) server config...");
+			log("WARNING: Using default (hardcoded) server config...");
 			serverConfig = getDefaultServerConfig();
 		}
 
 		if (serverConfig.getIgnoreSigTerm()) {
-			System.out.println("INFO: Installing SIGTERM handler...");
+			log("INFO: Installing SIGTERM handler...");
 			new SignalSuppressor(SignalSuppressor.SIGTERM).installHandler();
 		}
 
 		final WiredServerConfig config = new WiredServerConfig(serverConfig.getWiredHost(), serverConfig.getWiredPort());
 
-		System.out.println("INFO: Starting server...");
+		log("INFO: Starting server...");
 
 		final IconDatabase iconDB = new IconDatabase();
 		try {
 			boolean parallel = serverConfig.getParallelIconLoading();
-			System.out.println("INFO: Loading Hotline icons (parallel = " + parallel + ")...");
+			log("INFO: Loading Hotline icons (parallel = " + parallel + ")...");
 			ExecutorService pool = parallel ?
 				Executors.newCachedThreadPool() :
 				Executors.newSingleThreadExecutor();
@@ -78,7 +85,7 @@ public class ServerApp {
 
 		final FileTypeAndCreatorMap fileTypeAndCreatorMap = new FileTypeAndCreatorMap();
 		try {
-			System.out.println("INFO: Loading type and creator codes database...");
+			log("INFO: Loading type and creator codes database...");
 			fileTypeAndCreatorMap.loadFromAppleVolumesFile(new File(serverConfig.getAppleVolumesFilePath()));
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -88,10 +95,10 @@ public class ServerApp {
 		String passphrase = serverConfig.getCertificatesFilePassphrase();
 
 		final KeyStoreProvider ksp = new KeyStoreProvider(certificatesFile, passphrase);
-		System.out.println("INFO: Getting server SSL certificates...");
+		log("INFO: Getting server SSL certificates...");
 		boolean added = ksp.addCertificatesForServer(config.getHost(), config.getPort());
-		System.out.println("INFO: SSL certificates were " +
-				(added ? "added to" : "already present in") + " keystore file.");
+		log("INFO: SSL certificates were " +
+			(added ? "added to" : "already present in") + " keystore file.");
 
 		final FileTransferMap fileTransferMap = new FileTransferMap();
 
@@ -99,9 +106,9 @@ public class ServerApp {
 		ServerSocket serverSocket = new ServerSocket(port);
 		try {
 			InetAddress address = InetAddress.getLocalHost();
-			System.out.println("INFO: Server running on: " + address.getHostAddress() + ":" + port);
+			log("INFO: Server running on: " + address.getHostAddress() + ":" + port);
 		} catch (UnknownHostException e) {
-			System.out.println("WARNING: Unable to determine this host's address");
+			log("WARNING: Unable to determine this host's address");
 		}
 	
 		final int fileBridgePort = port + 1;
@@ -116,9 +123,9 @@ public class ServerApp {
 		}.start();
 
 		while (true) {
-			System.out.println("INFO: Waiting for connections...");
+			log("INFO: Waiting for connections...");
 			final Socket socket = serverSocket.accept();
-			System.out.println("INFO: Client connection from: " + socket.getInetAddress().getHostAddress() + ":" + port);
+			log("INFO: Client connection from: " + socket.getInetAddress().getHostAddress() + ":" + port);
 			new Thread() {
 				public void run() {
 					try {
@@ -139,15 +146,15 @@ public class ServerApp {
 		ServerSocket serverSocket = new ServerSocket(port);
 		try {
 			InetAddress address = InetAddress.getLocalHost();
-			System.out.println("INFO: File bridge running on: " + address.getHostAddress() + ":" + port);
+			log("INFO: File bridge running on: " + address.getHostAddress() + ":" + port);
 		} catch (UnknownHostException e) {
-			System.out.println("WARNING: Unable to determine this host's address");
+			log("WARNING: Unable to determine this host's address");
 		}
 		
 		while (true) {
-			System.out.println("INFO: Waiting for file protocol connections...");
+			log("INFO: Waiting for file protocol connections...");
 			final Socket socket = serverSocket.accept();
-			System.out.println("INFO: File protocol connection from: " + socket.getInetAddress().getHostAddress() + ":" + port);
+			log("INFO: File protocol connection from: " + socket.getInetAddress().getHostAddress() + ":" + port);
 			new Thread() {
 				public void run() {
 					try {
