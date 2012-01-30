@@ -54,7 +54,8 @@ public class HotWiredBridge implements WiredEventHandler {
 		try {
 			client = createClientFor(config.getHost(), config.getPort());	
 		} catch (Exception e) {
-			System.out.println("ERROR: Could not establish Wired connection : " + e.getMessage());
+			ServerApp.log("ERROR: Could not establish Wired connection : " + e.getMessage());
+			e.printStackTrace(System.out);
 			close();
 			return;
 		}
@@ -107,7 +108,7 @@ public class HotWiredBridge implements WiredEventHandler {
 	
 	private synchronized void close() {
 		if (!closed) {
-			System.out.println("INFO: Disconnecting client.");
+			ServerApp.log("INFO: Disconnecting client.");
 
 			if (wiredSocket != null) {
 				try { wiredSocket.close(); } catch (Exception e) {}
@@ -167,7 +168,8 @@ public class HotWiredBridge implements WiredEventHandler {
 	private void scheduleSuccessReply(Transaction t) {
 		// TODO: schedule it with a delay...
 		//       if we get an error for this t within
-		//       the delay, then don't send the error!
+		//       the delay, then don't send the success reply...
+		// so schedule it using a timer...
 		queue.offer(factory.createReply(t));
 	}
 
