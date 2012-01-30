@@ -2,6 +2,8 @@ package hotwiredbridge.hotline;
 
 import wired.WiredUtils;
 
+import hotwiredbridge.ServerApp;
+
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -60,7 +62,7 @@ public class IconDatabase {
 			e.printStackTrace();
 		}
 
-		System.out.printf("INFO: %d / %d icons loaded.\n", iconStats[0], iconStats[1]);
+		ServerApp.log("INFO: %d / %d icons loaded.", iconStats[0], iconStats[1]);
 	}
 	
 	public String getBase64FromIconIndex(int icon) {
