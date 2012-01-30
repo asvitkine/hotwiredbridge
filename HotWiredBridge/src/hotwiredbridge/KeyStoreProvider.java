@@ -1,5 +1,6 @@
 package hotwiredbridge;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -24,6 +25,7 @@ import javax.net.ssl.X509TrustManager;
 
 public class KeyStoreProvider {
 	private File certificatesFile;
+	private byte[] cachedFileBytes;
 	private String passphrase;
 
 	public KeyStoreProvider(File certificatesFile, String passphrase) {
@@ -37,7 +39,8 @@ public class KeyStoreProvider {
 		if (!certificatesFile.exists()) {
 			KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
 			ks.load(null, null);
-			ks.store(new FileOutputStream(certificatesFile), passphrase.toCharArray());  
+			ks.store(new FileOutputStream(certificatesFile), passphrase.toCharArray());
+			cachedFileBytes = null;
 		}
 	}
 	
@@ -45,7 +48,10 @@ public class KeyStoreProvider {
 		throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException
 	{
 		createKeyStoreIfNecessary();
-		InputStream in = new FileInputStream(certificatesFile);
+		if (cachedFileBytes == null) {
+			cachedFileBytes = Utils.fileToByteArray(certificatesFile);
+		}
+		InputStream in = new ByteArrayInputStream(cachedFileBytes);
 		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
 		ks.load(in, passphrase.toCharArray());
 		in.close();
@@ -78,10 +84,12 @@ public class KeyStoreProvider {
 					ks.setCertificateEntry(alias, cert);
 					ks.store(out, passphrase.toCharArray());
 					added = true;
+					cachedFileBytes = null;
 				}
 				out.close();
-			}			
+			}
 		}
+
 		return added;
 	}
 
