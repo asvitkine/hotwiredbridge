@@ -28,6 +28,7 @@ public class HotWiredBridge implements WiredEventHandler {
 	private List<Transaction> pendingTransactions;
 	private Map<Long,Transaction> pendingCreateChatTransactions;
 	private boolean closed;
+	private boolean debug;
 
 	public HotWiredBridge(WiredServerConfig config, IconDatabase iconDB, KeyStoreProvider ksp,
 			FileTypeAndCreatorMap fileTypeAndCreatorMap, FileTransferMap fileTransferMap,
@@ -41,6 +42,10 @@ public class HotWiredBridge implements WiredEventHandler {
 		this.out = new DataOutputStream(out);
 	}
 
+	public void setDebug(boolean debug) {
+		this.debug = debug;
+	}
+	
 	public WiredClient getWiredClient() {
 		return client;
 	}
@@ -79,7 +84,8 @@ public class HotWiredBridge implements WiredEventHandler {
 		try {
 			while (!closed) {
 				Transaction t = Transaction.readFromStream(in);
-				System.out.println("Got transaction: " + t.toString());
+				if (debug)
+					System.out.println("Got transaction: " + t.toString());
 				handleTransaction(t);
 			}
 		} catch (IOException e) {
@@ -93,7 +99,8 @@ public class HotWiredBridge implements WiredEventHandler {
 		try {
 			while (!closed) {
 				Transaction t = queue.take();
-				System.out.println("Sending transaction: " + t.toString());
+				if (debug)
+					System.out.println("Sending transaction: " + t.toString());
 				Transaction.writeToStream(t, out);
 				out.flush();
 			}
@@ -404,7 +411,8 @@ public class HotWiredBridge implements WiredEventHandler {
 			break;
 		}
 		default:
-			System.out.println("NOT HANDLED!");
+			if (debug)
+				System.out.println("NOT HANDLED!");
 			t = factory.createReply(t, true);
 			queue.offer(t);
 		}
@@ -812,7 +820,8 @@ public class HotWiredBridge implements WiredEventHandler {
 									pendingTransactions.remove(t);
 								}
 							} else { // t.getId() == Transaction.ID_UPLOAD && isResumeUploadTransaction(t)
-								System.err.println("GOT FILEINFO for PARTIAL UPLOAD ... checksum -> " + fileInfoEvent.getChecksum());
+								if (debug)
+									System.err.println("GOT FILEINFO for PARTIAL UPLOAD ... checksum -> " + fileInfoEvent.getChecksum());
 								// We issued a file info request to get the checksum for the upload resumption.
 								int hotlineTransferId = fileTransferMap.createUploadTransfer(this, fileInfo, fileInfoEvent.getChecksum()).getHotlineTransferId();
 								t.addObject(TransactionObject.TRANSFER_ID, HotlineUtils.pack("N", hotlineTransferId));
@@ -898,7 +907,7 @@ public class HotWiredBridge implements WiredEventHandler {
 					}
 				}
 			}
-		} else {
+		} else if (debug) {
 			System.out.println("not handled->"+event.getClass());
 		}
 	}
