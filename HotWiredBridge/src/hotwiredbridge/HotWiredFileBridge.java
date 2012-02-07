@@ -54,6 +54,49 @@ public class HotWiredFileBridge {
 		return MacRoman.toString(data);
 	}
 	
+	private void writeFileData(byte[] checksumBuf, int length, SSLSocket socket, String wiredTransferId) throws IOException {
+		WiredTransferClient client = new WiredTransferClient(socket.getOutputStream());
+		client.identifyTransfer(wiredTransferId);
+		OutputStream outgoing = socket.getOutputStream();
+		outgoing.write(checksumBuf);
+		length -= checksumBuf.length;
+		if (length > 0) {
+			byte[] buf = new byte[64 * 1024];
+			while (length > 0) {
+				int n = (length > buf.length ? buf.length : length);
+				int nread = in.read(buf, 0, n);
+				if (nread <= 0) {
+					break;
+				}
+				outgoing.write(buf, 0, nread);
+				length -= nread;
+			}
+		}
+		outgoing.flush();
+		outgoing.close();
+		socket.close();
+	}
+	
+	private void uploadFileToWired(FileTransfer transfer, int length) throws Exception {
+		String checksum = transfer.getWiredChecksum();
+		int checksumSize = 0;
+		if (checksum == null) {
+			checksumSize = (1024 * 1024 > length ? length : 1024 * 1024);
+		}
+		byte[] checksumBuf = new byte[checksumSize];
+		if (checksumSize > 0) {
+			in.readFully(checksumBuf);
+			checksum = WiredUtils.SHA1(checksumBuf);
+		}
+		String path = transfer.getFileInfo().getPath();
+		// We have enough info to send a putFile() to the wired server.
+		transfer.getHotWiredBridge().getWiredClient().putFile(path, length, checksum);
+		// Wait for wired to reply and tell us to proceed with the upload.
+		transfer = fileTransferMap.waitForWiredTransferIdForUploadTransfer(transfer);
+		SSLSocket socket = openWiredSocket(config.getHost(), config.getPort() + 1);
+		writeFileData(checksumBuf, length, socket, transfer.getWiredTransferId());
+	}
+	
 	private void receiveFileFromHotline(FileTransfer transfer) throws Exception {
 		while (in.available() > 0) {
 			String tag = HotlineUtils.readTag(in);
@@ -70,43 +113,7 @@ public class HotWiredFileBridge {
 				in.readInt();
 				in.readInt();
 				int length = in.readInt();
-				String checksum = transfer.getWiredChecksum();
-				int checksumSize = 0;
-				if (checksum == null) {
-					checksumSize = (1024 * 1024 > length ? length : 1024 * 1024);
-				}
-				byte[] checksumBuf = new byte[checksumSize];
-				if (checksumSize > 0) {
-					in.readFully(checksumBuf);
-					checksum = WiredUtils.SHA1(checksumBuf);
-				}
-				String path = transfer.getFileInfo().getPath();
-				// We have enough info to send a putFile() to the wired server.
-				transfer.getHotWiredBridge().getWiredClient().putFile(path, length, checksum);
-				// Wait for wired to reply and tell us to proceed with the upload.
-				transfer = fileTransferMap.waitForWiredTransferIdForUploadTransfer(transfer);
-				String wiredTransferId = transfer.getWiredTransferId();
-				SSLSocket socket = openWiredSocket(config.getHost(), config.getPort() + 1);
-				WiredTransferClient client = new WiredTransferClient(socket.getOutputStream());
-				client.identifyTransfer(wiredTransferId);
-				OutputStream outgoing = socket.getOutputStream();
-				outgoing.write(checksumBuf);
-				length -= checksumSize;
-				if (length > 0) {
-					byte[] buf = new byte[64 * 1024];
-					while (length > 0) {
-						int n = (length > buf.length ? buf.length : length);
-						int nread = in.read(buf, 0, n);
-						if (nread <= 0) {
-							break;
-						}
-						outgoing.write(buf, 0, nread);
-						length -= nread;
-					}
-				}
-				outgoing.flush();
-				outgoing.close();
-				socket.close();
+				uploadFileToWired(transfer, length);
 			} else if (tag.equals("MACR")) {
 				in.readInt();
 				in.readInt();
