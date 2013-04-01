@@ -46,20 +46,28 @@ public class HotlinePrivileges {
 	public HotlinePrivileges() {
 	}
 	
+	public HotlinePrivileges(long value) {
+		init(value);
+	}
+	
 	public HotlinePrivileges(byte[] data) {
 		try {
-			value = new DataInputStream(new ByteArrayInputStream(data)).readLong();
-			for (int i = 0; i < 64; i++) {
-				if (hasPrivilege(i)) {
-					System.err.print(i+" ");
-				}
-			}
-			System.err.println();
+			init(new DataInputStream(new ByteArrayInputStream(data)).readLong());
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
+	private void init(long value) {
+		this.value = value;
+		for (int i = 0; i < 64; i++) {
+			if (hasPrivilege(i)) {
+				System.err.print(i+" ");
+			}
+		}
+		System.err.println();
+	}
+	
 	private long flagForBit(int bit) {
 		return (1L << bit);
 	}
