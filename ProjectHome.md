@@ -1,0 +1,1 @@
+Sits between a Wired server and a Hotline client, accepting Hotline client connections and bridging them to a Wired server.
